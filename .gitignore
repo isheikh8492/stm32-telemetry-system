@@ -1,0 +1,69 @@
+# =========================
+# STM32 / CubeIDE
+# =========================
+
+# Build outputs
+Debug/
+Release/
+build/
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+
+# CubeIDE metadata (user-specific)
+.metadata/
+.settings/
+
+# Eclipse-based project noise (keep if needed, optional)
+# .project
+# .cproject
+
+# =========================
+# STM32CubeMX
+# =========================
+
+# (KEEP .ioc files — DO NOT ignore them)
+
+# =========================
+# C# / .NET
+# =========================
+
+# Build output
+bin/
+obj/
+
+# Visual Studio
+.vs/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+
+# =========================
+# OS files
+# =========================
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# macOS
+.DS_Store
+
+# =========================
+# Logs / temp
+# =========================
+
+*.log
+*.tmp
+*.cache
+
+# =========================
+# Data (optional rule)
+# =========================
+
+# Keep small sample data, ignore large dumps
+# data/raw/
