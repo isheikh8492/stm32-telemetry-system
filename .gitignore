@@ -15,6 +15,7 @@ build/
 # CubeIDE metadata (user-specific)
 .metadata/
 .settings/
+*.launch
 
 # Eclipse-based project noise (keep if needed, optional)
 # .project
