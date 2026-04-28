@@ -1,1 +1,7 @@
-<Solution />
+<Solution>
+  <Project Path="Telemetry.ConsoleTest/Telemetry.ConsoleTest.csproj" Id="3c2cb0bb-8d46-4b3d-98f7-1077d550f361" />
+  <Project Path="Telemetry.Core/Telemetry.Core.csproj" />
+  <Project Path="Telemetry.Engine/Telemetry.Engine.csproj" />
+  <Project Path="Telemetry.IO/Telemetry.IO.csproj" />
+  <Project Path="TelemetryViewer/TelemetryViewer.csproj" />
+</Solution>

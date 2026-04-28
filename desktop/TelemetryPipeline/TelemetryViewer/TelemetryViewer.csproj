@@ -8,4 +8,10 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Telemetry.Core\Telemetry.Core.csproj" />
+    <ProjectReference Include="..\Telemetry.Engine\Telemetry.Engine.csproj" />
+    <ProjectReference Include="..\Telemetry.IO\Telemetry.IO.csproj" />
+  </ItemGroup>
+
 </Project>
