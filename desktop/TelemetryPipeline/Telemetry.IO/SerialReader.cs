@@ -1,4 +1,5 @@
 ﻿using System.IO.Ports;
+using System.Linq;
 using Telemetry.Core;
 using Telemetry.Core.Models;
 
@@ -6,11 +7,20 @@ namespace Telemetry.IO
 {
     public sealed class SerialReader : IDisposable
     {
+        public const int DefaultBaudRate = 115200;
+
         private readonly SerialPort _serialPort;
         private bool _running;
 
-        public event Action<RawSample> SampleReceived;
-        public event Action<string> ErrorOccurred;
+        public event Action<RawSample>? SampleReceived;
+        public event Action<string>? ErrorOccurred;
+
+        public static string[] GetAvailablePorts()
+        {
+            return SerialPort.GetPortNames()
+                .OrderBy(static port => port)
+                .ToArray();
+        }
 
         public SerialReader(string portName, int baudRate)
         {
