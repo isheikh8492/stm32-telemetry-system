@@ -1,5 +1,6 @@
 ﻿using System.Threading.Tasks;
 using System.Windows;
+using ScottPlot;
 using Telemetry.IO;
 
 namespace TelemetryViewer
@@ -27,6 +28,17 @@ namespace TelemetryViewer
             BaudRateComboBox.IsEnabled = false;
 
             LoadAvailablePorts();
+            InitializeWorksheetPlot();
+        }
+
+        private void InitializeWorksheetPlot()
+        {
+            TelemetryPlot.Plot.Clear();
+            TelemetryPlot.Plot.Add.Signal(Generate.Sin(200));
+            TelemetryPlot.Plot.Title("Live Telemetry");
+            TelemetryPlot.Plot.XLabel("Sample");
+            TelemetryPlot.Plot.YLabel("ADC");
+            TelemetryPlot.Refresh();
         }
 
         private void LoadAvailablePorts()

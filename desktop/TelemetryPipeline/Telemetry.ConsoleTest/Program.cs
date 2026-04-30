@@ -1,16 +1,29 @@
 ﻿using Telemetry.IO;
 
-using var reader = new SerialReader("COM4", 115200);
+var availablePorts = SerialReader.GetAvailablePorts();
+var selectedPort = args.Length > 0 ? args[0] : availablePorts.FirstOrDefault();
 
-reader.SampleReceived += sample =>
+Console.WriteLine($"Available ports: {(availablePorts.Length == 0 ? "none" : string.Join(", ", availablePorts))}");
+
+if (string.IsNullOrWhiteSpace(selectedPort))
+{
+    Console.WriteLine("No serial ports found.");
+    return;
+}
+
+Console.WriteLine($"Opening {selectedPort} at {SerialReader.DefaultBaudRate} baud...");
+
+using var reader = new SerialReader(selectedPort, SerialReader.DefaultBaudRate);
+
+reader.EventReceived += telemetryEvent =>
 {
     Console.WriteLine(
-        $"Packet={sample.PacketId}, Time={sample.TimestampMs}, Ch1={sample.Ch1}, Ch2={sample.Ch2}, Ch3={sample.Ch3}");
+    $"Event={telemetryEvent.EventId}, Time={telemetryEvent.TimestampMs}, Baseline={telemetryEvent.EventParameters.Baseline}, Area={telemetryEvent.EventParameters.Area}, PeakWidth={telemetryEvent.EventParameters.PeakWidth}, PeakHeight={telemetryEvent.EventParameters.PeakHeight}, Samples={telemetryEvent.Samples.Count}");
 };
 
-reader.ErrorOccurred += line =>
+reader.ErrorOccurred += message =>
 {
-    Console.WriteLine($"Bad: {line}");
+    Console.WriteLine(message);
 };
 
 Console.WriteLine("Listening...");

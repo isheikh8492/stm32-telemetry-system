@@ -12,7 +12,7 @@ namespace Telemetry.IO
         private readonly SerialPort _serialPort;
         private bool _running;
 
-        public event Action<RawSample>? SampleReceived;
+        public event Action<Event>? EventReceived;
         public event Action<string>? ErrorOccurred;
 
         public static string[] GetAvailablePorts()
@@ -42,10 +42,10 @@ namespace Telemetry.IO
                     try
                     {
                         var line = _serialPort.ReadLine();
-                        var sample = SampleParser.ParseLine(line);
-                        if (sample != null)
+                        var telemetryEvent = EventParser.ParseLine(line);
+                        if (telemetryEvent != null)
                         {
-                            SampleReceived?.Invoke(sample);
+                            EventReceived?.Invoke(telemetryEvent);
                         }
                     }
                     catch (TimeoutException)
@@ -65,7 +65,6 @@ namespace Telemetry.IO
             }
 
         }
-
 
         public void Stop()
         {

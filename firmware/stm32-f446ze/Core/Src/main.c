@@ -34,6 +34,10 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+#define EVENT_SAMPLE_COUNT 32
+#define ADC_MIN 0
+#define ADC_MAX 4095
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -58,6 +62,15 @@ static void MX_USART3_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+static uint16_t clamp_adc(int value)
+{
+  if (value < ADC_MIN)
+    return ADC_MIN;
+  if (value > ADC_MAX)
+    return ADC_MAX;
+  return (uint16_t)value;
+}
 
 /* USER CODE END 0 */
 
@@ -92,15 +105,8 @@ int main(void)
   MX_GPIO_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  uint32_t packet_id = 0;
-  char msg[96];
-
-  // signal state
-  int baseline = 1500;
-  int pulse_remaining = 0;
-  int pulse_age = 0;
-  int pulse_amp = 0;
-  int pulse_width = 0;
+  uint32_t event_id = 0;
+  char msg[512];
 
   /* USER CODE END 2 */
 
@@ -111,70 +117,74 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    uint32_t t = HAL_GetTick();
+    uint32_t timestamp = HAL_GetTick();
 
-    // --- baseline drift ---
-    baseline += (rand() % 3) - 1;
-    if (baseline < 1200)
-      baseline = 1200;
-    if (baseline > 1800)
-      baseline = 1800;
+    uint16_t samples[EVENT_SAMPLE_COUNT];
 
-    // --- start random pulse ---
-    if (pulse_remaining == 0 && (rand() % 100) < 5)
+    uint16_t baseline = clamp_adc(1500 + (rand() % 101) - 50);
+    uint16_t peak_height = 0;
+    uint32_t area = 0;
+    uint32_t peak_width = 0;
+
+    int pulse_amp = 800 + rand() % 1800;
+    int pulse_center = 10 + rand() % 12;
+    int pulse_width = 6 + rand() % 10;
+
+    for (int i = 0; i < EVENT_SAMPLE_COUNT; i++)
     {
-      pulse_width = 8 + rand() % 20;
-      pulse_remaining = pulse_width;
-      pulse_age = 0;
-      pulse_amp = 600 + rand() % 1800;
+      int distance = i - pulse_center;
+      if (distance < 0)
+        distance = -distance;
+
+      int pulse = 0;
+
+      if (distance < pulse_width)
+      {
+        pulse = pulse_amp * (pulse_width - distance) / pulse_width;
+      }
+
+      int noise = (rand() % 81) - 40;
+
+      samples[i] = clamp_adc((int)baseline + pulse + noise);
+
+      if (samples[i] > peak_height)
+        peak_height = samples[i];
+
+      if (samples[i] > baseline)
+        area += samples[i] - baseline;
     }
 
-    int pulse = 0;
+    uint16_t threshold = baseline + ((peak_height - baseline) / 2);
 
-    // --- pulse shape (fast rise, slow decay) ---
-    if (pulse_remaining > 0)
+    for (int i = 0; i < EVENT_SAMPLE_COUNT; i++)
     {
-      int rise = pulse_age < 3 ? (pulse_age + 1) * pulse_amp / 3 : pulse_amp;
-      int decay = rise * pulse_remaining / pulse_width;
-      pulse = decay;
-
-      pulse_age++;
-      pulse_remaining--;
+      if (samples[i] >= threshold)
+        peak_width++;
     }
 
-    // --- channels ---
-    int ch1 = baseline + ((rand() % 81) - 40);                // noisy baseline
-    int ch2 = baseline + pulse + ((rand() % 61) - 30);        // pulse channel
-    int ch3 = baseline + (pulse / 2) + ((rand() % 101) - 50); // correlated
+    int len = sprintf(
+        msg,
+        "EVT,%lu,%lu,%u,%lu,%lu,%u,%u",
+        event_id,
+        timestamp,
+        baseline,
+        area,
+        peak_width,
+        peak_height,
+        EVENT_SAMPLE_COUNT);
 
-    // clamp to ADC range
-    if (ch1 < 0)
-      ch1 = 0;
-    if (ch1 > 4095)
-      ch1 = 4095;
-    if (ch2 < 0)
-      ch2 = 0;
-    if (ch2 > 4095)
-      ch2 = 4095;
-    if (ch3 < 0)
-      ch3 = 0;
-    if (ch3 > 4095)
-      ch3 = 4095;
+    for (int i = 0; i < EVENT_SAMPLE_COUNT; i++)
+    {
+      len += sprintf(msg + len, ",%u", samples[i]);
+    }
 
-    // --- format packet ---
-    sprintf(msg, "%lu,%lu,%d,%d,%d\r\n",
-            packet_id,
-            t,
-            ch1,
-            ch2,
-            ch3);
+    len += sprintf(msg + len, "\r\n");
 
-    // --- send ---
-    HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart3, (uint8_t *)msg, len, HAL_MAX_DELAY);
 
-    packet_id++;
+    event_id++;
 
-    HAL_Delay(50); // ~20 Hz
+    HAL_Delay(100);
   }
   /* USER CODE END 3 */
 }
