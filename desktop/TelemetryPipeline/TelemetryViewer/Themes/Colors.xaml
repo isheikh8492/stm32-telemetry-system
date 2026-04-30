@@ -1,0 +1,8 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#F5F5F5" />
+    <SolidColorBrush x:Key="PanelHeaderBrush" Color="#1F3B5C" />
+    <SolidColorBrush x:Key="PanelHeaderForegroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="WorksheetHeaderBrush" Color="#E9EEF5" />
+    <SolidColorBrush x:Key="WorksheetSurfaceBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="PlotBorderBrush" Color="#D7DEE8" />
+</ResourceDictionary>

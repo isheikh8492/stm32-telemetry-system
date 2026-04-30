@@ -5,7 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:TelemetryViewer"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:scottPlot="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
+    xmlns:plots="clr-namespace:TelemetryViewer.Views.Plots"
     Title="Telemetry Viewer"
     Width="800"
     Height="450"
@@ -19,68 +19,46 @@
         </Grid.ColumnDefinitions>
 
         <!--  Sidebar with Control Panels (15%)  -->
-        <Border Grid.Column="0" Background="#F5F5F5">
+        <Border Grid.Column="0" Background="{StaticResource SidebarBackgroundBrush}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="0">
                     <!--  Connection Panel  -->
-                    <StackPanel Margin="0,0,0,10">
-                        <TextBlock
-                            Padding="10,8"
-                            Background="#1F3B5C"
-                            FontSize="13"
-                            FontWeight="SemiBold"
-                            Foreground="White"
-                            Text="Connection" />
-                        <StackPanel Margin="10">
-                            <TextBlock Margin="0,0,0,4" Text="Port:" />
-                            <ComboBox
-                                x:Name="PortComboBox"
-                                MinWidth="120"
-                                Margin="0,0,0,10" />
-                            <TextBlock Margin="0,0,0,4" Text="Baud Rate:" />
+                    <StackPanel Style="{StaticResource SidebarSectionStyle}">
+                        <TextBlock Style="{StaticResource SidebarHeaderTextStyle}" Text="Connection" />
+                        <StackPanel Style="{StaticResource SidebarSectionBodyStyle}">
+                            <TextBlock Style="{StaticResource SidebarFieldLabelStyle}" Text="Port:" />
+                            <ComboBox x:Name="PortComboBox" Style="{StaticResource SidebarComboBoxStyle}" />
+                            <TextBlock Style="{StaticResource SidebarFieldLabelStyle}" Text="Baud Rate:" />
                             <ComboBox
                                 x:Name="BaudRateComboBox"
-                                MinWidth="120"
-                                Margin="0,0,0,10"
-                                IsEnabled="False" />
+                                IsEnabled="False"
+                                Style="{StaticResource SidebarComboBoxStyle}" />
                             <Button
                                 x:Name="ConnectButton"
-                                Height="28"
                                 Click="ConnectButton_Click"
-                                Content="Connect" />
+                                Content="Connect"
+                                Style="{StaticResource SidebarButtonStyle}" />
                         </StackPanel>
                     </StackPanel>
 
                     <!--  Recording Panel  -->
-                    <StackPanel Margin="0,0,0,10">
-                        <TextBlock
-                            Padding="10,8"
-                            Background="#1F3B5C"
-                            FontSize="13"
-                            FontWeight="SemiBold"
-                            Foreground="White"
-                            Text="Recording" />
-                        <StackPanel Margin="10">
+                    <StackPanel Style="{StaticResource SidebarSectionStyle}">
+                        <TextBlock Style="{StaticResource SidebarHeaderTextStyle}" Text="Recording" />
+                        <StackPanel Style="{StaticResource SidebarSectionBodyStyle}">
                             <Button
-                                Height="28"
                                 Margin="0,0,0,6"
-                                Content="Start Recording" />
-                            <Button Height="28" Content="Stop Recording" />
+                                Content="Start Recording"
+                                Style="{StaticResource SidebarButtonStyle}" />
+                            <Button Content="Stop Recording" Style="{StaticResource SidebarButtonStyle}" />
                         </StackPanel>
                     </StackPanel>
 
                     <!--  Display Settings Panel  -->
-                    <StackPanel Margin="0,0,0,10">
-                        <TextBlock
-                            Padding="10,8"
-                            Background="#1F3B5C"
-                            FontSize="13"
-                            FontWeight="SemiBold"
-                            Foreground="White"
-                            Text="Display Settings" />
-                        <StackPanel Margin="10">
-                            <CheckBox Margin="0,0,0,6" Content="Auto-scroll" />
-                            <CheckBox Margin="0,0,0,6" Content="Show grid" />
+                    <StackPanel Style="{StaticResource SidebarSectionStyle}">
+                        <TextBlock Style="{StaticResource SidebarHeaderTextStyle}" Text="Display Settings" />
+                        <StackPanel Style="{StaticResource SidebarSectionBodyStyle}">
+                            <CheckBox Content="Auto-scroll" Style="{StaticResource SidebarCheckBoxStyle}" />
+                            <CheckBox Content="Show grid" Style="{StaticResource SidebarCheckBoxStyle}" />
                             <TextBlock Margin="0,6,0,4" Text="Update Rate (Hz):" />
                             <Slider
                                 Maximum="60"
@@ -100,7 +78,7 @@
             VerticalAlignment="Stretch" />
 
         <!--  Worksheet Area (85%)  -->
-        <Border Grid.Column="2" Background="White">
+        <Border Grid.Column="2" Background="{StaticResource WorksheetSurfaceBrush}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="1*" />
@@ -111,22 +89,11 @@
                     Grid.Row="0"
                     Margin="0,0,0,10"
                     Padding="10,6"
-                    Background="#E9EEF5" />
+                    Background="{StaticResource WorksheetHeaderBrush}" />
 
-                <Border Grid.Row="1" Background="#FFFFFF">
+                <Border Grid.Row="1" Background="{StaticResource WorksheetSurfaceBrush}">
                     <Grid>
-                        <Border
-                            Width="900"
-                            Height="520"
-                            Padding="8"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Background="White"
-                            BorderBrush="#D7DEE8"
-                            BorderThickness="1"
-                            CornerRadius="8">
-                            <scottPlot:WpfPlot x:Name="oscilloscopePlotView" />
-                        </Border>
+                        <plots:OscilloscopePlotView x:Name="oscilloscopePlotView" />
                     </Grid>
                 </Border>
             </Grid>
