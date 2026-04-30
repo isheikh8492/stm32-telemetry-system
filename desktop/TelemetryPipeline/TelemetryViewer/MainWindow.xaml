@@ -125,7 +125,7 @@
                             BorderBrush="#D7DEE8"
                             BorderThickness="1"
                             CornerRadius="8">
-                            <scottPlot:WpfPlot x:Name="TelemetryPlot" />
+                            <scottPlot:WpfPlot x:Name="oscilloscopePlotView" />
                         </Border>
                     </Grid>
                 </Border>
