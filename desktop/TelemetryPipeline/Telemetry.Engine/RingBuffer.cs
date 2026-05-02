@@ -2,7 +2,7 @@ using Telemetry.Core.Models;
 
 namespace Telemetry.Engine;
 
-public sealed class RingBuffer
+public sealed class RingBuffer : IDataSource
 {
     private readonly Event[] _events;
     private readonly object _lock = new();
@@ -21,6 +21,20 @@ public sealed class RingBuffer
     public int Count
     {
         get { lock (_lock) return _count; }
+    }
+
+    public uint? LatestEventId
+    {
+        get
+        {
+            lock (_lock)
+            {
+                if (_count == 0)
+                    return null;
+                int last = (_writeIndex - 1 + _events.Length) % _events.Length;
+                return _events[last].EventId;
+            }
+        }
     }
 
     public void Append(Event evt)

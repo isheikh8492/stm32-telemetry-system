@@ -9,6 +9,7 @@ public sealed class SerialProducer : IProducer, IDisposable
     private readonly SerialReader _reader;
     private readonly Channel<Event> _channel;
     private Task? _readerTask;
+    private bool _started;
 
     public SerialProducer(SerialReader reader, int channelCapacity = 1024)
     {
@@ -19,20 +20,25 @@ public sealed class SerialProducer : IProducer, IDisposable
             SingleReader = true,
             SingleWriter = true,
         });
-        _reader.EventReceived += OnEventReceived;
     }
 
     public ChannelReader<Event> Reader => _channel.Reader;
 
     public void Start()
     {
-        if (_readerTask is not null)
+        if (_started)
             return;
+        _started = true;
+        _reader.EventReceived += OnEventReceived;
         _readerTask = Task.Run(_reader.Start);
     }
 
     public void Stop()
     {
+        if (!_started)
+            return;
+        _started = false;
+        _reader.EventReceived -= OnEventReceived;
         _reader.Stop();
         _readerTask = null;
 
@@ -40,11 +46,7 @@ public sealed class SerialProducer : IProducer, IDisposable
         while (_channel.Reader.TryRead(out _)) { }
     }
 
-    public void Dispose()
-    {
-        _reader.EventReceived -= OnEventReceived;
-        Stop();
-    }
+    public void Dispose() => Stop();
 
     private void OnEventReceived(Event evt) => _channel.Writer.TryWrite(evt);
 }
