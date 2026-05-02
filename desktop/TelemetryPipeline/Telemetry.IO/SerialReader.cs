@@ -54,7 +54,8 @@ namespace Telemetry.IO
                     }
                     catch (Exception ex)
                     {
-                        ErrorOccurred?.Invoke($"Error reading from serial port: {ex.Message}");
+                        if (_running)
+                            ErrorOccurred?.Invoke($"Error reading from serial port: {ex.Message}");
                     }
                 }
 

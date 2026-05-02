@@ -5,6 +5,7 @@ namespace Telemetry.Engine;
 public interface IDataSource
 {
     int Count { get; }
+    long TotalAppended { get; }
     uint? LatestEventId { get; }
 
     // O(1), no allocation. For plots that only need the most recent event.

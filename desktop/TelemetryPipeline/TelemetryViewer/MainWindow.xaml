@@ -66,6 +66,56 @@
                                 Value="30" />
                         </StackPanel>
                     </StackPanel>
+
+                    <!--  Processing Stats Panel  -->
+                    <StackPanel Style="{StaticResource SidebarSectionStyle}">
+                        <TextBlock Style="{StaticResource SidebarHeaderTextStyle}" Text="Processing Stats" />
+                        <StackPanel Style="{StaticResource SidebarSectionBodyStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock
+                                    Grid.Row="0"
+                                    Grid.Column="0"
+                                    Margin="0,0,8,2"
+                                    Text="Event rate:" />
+                                <TextBlock
+                                    x:Name="EventRateText"
+                                    Grid.Row="0"
+                                    Grid.Column="1"
+                                    Margin="0,0,0,2"
+                                    Text="0 ev/s" />
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Grid.Column="0"
+                                    Margin="0,0,8,2"
+                                    Text="Processing:" />
+                                <TextBlock
+                                    x:Name="ProcessingTimeText"
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    Margin="0,0,0,2"
+                                    Text="—" />
+                                <TextBlock
+                                    Grid.Row="2"
+                                    Grid.Column="0"
+                                    Margin="0,0,8,0"
+                                    Text="Render:" />
+                                <TextBlock
+                                    x:Name="RenderTimeText"
+                                    Grid.Row="2"
+                                    Grid.Column="1"
+                                    Text="—" />
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
             </ScrollViewer>
         </Border>

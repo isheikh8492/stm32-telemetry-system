@@ -8,6 +8,7 @@ public sealed class RingBuffer : IDataSource
     private readonly object _lock = new();
     private int _writeIndex;
     private int _count;
+    private long _totalAppended;
 
     public RingBuffer(int capacity)
     {
@@ -21,6 +22,13 @@ public sealed class RingBuffer : IDataSource
     public int Count
     {
         get { lock (_lock) return _count; }
+    }
+
+    // Lifetime counter — never reset by Clear(). Consumers compute event rate
+    // by sampling the delta over wall-clock time.
+    public long TotalAppended
+    {
+        get { lock (_lock) return _totalAppended; }
     }
 
     public uint? LatestEventId
@@ -56,6 +64,7 @@ public sealed class RingBuffer : IDataSource
             _writeIndex = (_writeIndex + 1) % _events.Length;
             if (_count < _events.Length)
                 _count++;
+            _totalAppended++;
         }
     }
 

@@ -1,11 +1,11 @@
 using System.Windows;
 using System.Windows.Controls;
 using ScottPlot.DataSources;
-using Telemetry.Core.Models;
+using Telemetry.Engine;
 
 namespace TelemetryViewer.Views.Plots
 {
-    public partial class OscilloscopePlotView : UserControl
+    public partial class OscilloscopePlotView : UserControl, IRenderTarget
     {
         private ScottPlot.Plottables.Signal? _eventSignal;
 
@@ -43,25 +43,30 @@ namespace TelemetryViewer.Views.Plots
             oscilloscopePlot.Refresh();
         }
 
-        public void UpdatePlot(Event telemetryEvent)
+        // RenderingEngine guarantees this is invoked on the UI thread.
+        public void Render(ProcessedData data)
         {
-            var sampleValues = telemetryEvent.Samples.Select(static sample => (double)sample).ToArray();
+            if (data is not OscilloscopeFrame frame)
+                return;
 
-            Dispatcher.Invoke(() =>
+            // Manual ushort -> double copy avoids LINQ iterator allocation in the hot path.
+            var samples = frame.Samples;
+            var values = new double[samples.Count];
+            for (int i = 0; i < samples.Count; i++)
+                values[i] = samples[i];
+
+            if (_eventSignal is null)
             {
-                if (_eventSignal is null)
-                {
-                    _eventSignal = oscilloscopePlot.Plot.Add.SignalConst(sampleValues);
-                    _eventSignal.MaximumMarkerSize = 0;
-                }
-                else
-                {
-                    _eventSignal.Data = new SignalConstSource<double>(sampleValues, 1);
-                }
+                _eventSignal = oscilloscopePlot.Plot.Add.SignalConst(values);
+                _eventSignal.MaximumMarkerSize = 0;
+            }
+            else
+            {
+                _eventSignal.Data = new SignalConstSource<double>(values, 1);
+            }
 
-                oscilloscopePlot.Plot.Axes.SetLimits(left: 0, right: Math.Max(1, sampleValues.Length - 1), bottom: 0, top: 5000);
-                oscilloscopePlot.Refresh();
-            });
+            oscilloscopePlot.Plot.Axes.SetLimits(left: 0, right: Math.Max(1, values.Length - 1), bottom: 0, top: 5000);
+            oscilloscopePlot.Refresh();
         }
     }
 }

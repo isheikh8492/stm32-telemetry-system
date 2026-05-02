@@ -46,6 +46,18 @@ public sealed class ViewportSession : IDisposable
         _rendering.Unregister(plotId);
     }
 
+    public IReadOnlyDictionary<Type, double> GetProcessingTimes() =>
+        _processing.GetAverageComputeTimes();
+
+    public IReadOnlyDictionary<Type, double> GetRenderingTimes() =>
+        _rendering.GetAverageRenderTimes();
+
+    public void ResetMetrics()
+    {
+        _processing.ResetMetrics();
+        _rendering.ResetMetrics();
+    }
+
     public void Start()
     {
         _processing.Start();
