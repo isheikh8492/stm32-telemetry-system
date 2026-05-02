@@ -8,12 +8,14 @@ public sealed class ViewportSession : IDisposable
     private readonly DataStore _store = new();
     private readonly ProcessingEngine _processing;
     private readonly RenderingEngine _rendering;
+    private readonly IContextMenuProvider? _menuProvider;
 
     public ViewportSession(
         IDataSource source,
         SynchronizationContext uiContext,
         TimeSpan? processingInterval = null,
-        TimeSpan? renderingInterval = null)
+        TimeSpan? renderingInterval = null,
+        IContextMenuProvider? contextMenuProvider = null)
     {
         _processing = new ProcessingEngine(
             source, _store,
@@ -22,6 +24,8 @@ public sealed class ViewportSession : IDisposable
         _rendering = new RenderingEngine(
             uiContext, _store,
             renderingInterval ?? DefaultRenderingInterval);
+
+        _menuProvider = contextMenuProvider;
     }
 
     public bool IsRunning => _processing.IsRunning && _rendering.IsRunning;
@@ -32,6 +36,16 @@ public sealed class ViewportSession : IDisposable
     {
         _store.UpsertSettings(settings);
         _rendering.Register(settings.PlotId, target);
+
+        if (_menuProvider is not null && target is IContextMenuTarget menuTarget)
+        {
+            // Re-query store + provider on every menu open so entries reflect current settings.
+            menuTarget.AttachContextMenu(() =>
+            {
+                var current = _store.GetSettings(settings.PlotId) ?? settings;
+                return _menuProvider.GetMenuFor(current);
+            });
+        }
     }
 
     public void UpdateSettings(PlotSettings settings)

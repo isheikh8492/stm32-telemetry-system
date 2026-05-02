@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Threading;
 using Telemetry.Engine;
 using Telemetry.IO;
+using TelemetryViewer.Views.Dialogs;
 
 namespace TelemetryViewer
 {
@@ -102,14 +103,21 @@ namespace TelemetryViewer
             _producer = new SerialProducer(_serialReader);
             _consumer = new BufferConsumer(_producer.Reader, _buffer);
 
-            // 3. Viewport session — owns processing + rendering engines
+            // 3. Context menu provider — registers per-plot menu builders
+            var menuProvider = new PlotContextMenuProvider();
+            menuProvider.Register<OscilloscopeSettings>(settings => new[]
+            {
+                new ContextMenuEntry("Properties...", () => ShowOscilloscopeProperties(settings))
+            });
+
+            // 4. Viewport session — owns processing + rendering engines
             var uiContext = SynchronizationContext.Current
                 ?? throw new InvalidOperationException("UI SynchronizationContext is null.");
-            _viewport = new ViewportSession(_buffer, uiContext);
+            _viewport = new ViewportSession(_buffer, uiContext, contextMenuProvider: menuProvider);
 
-            // 4. Register the oscilloscope plot
+            // 5. Register the oscilloscope plot — channel 0 of the multi-channel event
             var oscilloscopeId = Guid.NewGuid();
-            _viewport.Register(new OscilloscopeSettings(oscilloscopeId), oscilloscopePlotView);
+            _viewport.Register(new OscilloscopeSettings(oscilloscopeId, ChannelId: 0), oscilloscopePlotView);
 
             // 5. Start everything: consumer task first (so it's awaiting), then producer (which feeds), then engines
             _consumerCts = new CancellationTokenSource();
@@ -123,6 +131,15 @@ namespace TelemetryViewer
             _statsTimer = new DispatcherTimer { Interval = StatsRefreshInterval };
             _statsTimer.Tick += StatsTimer_Tick;
             _statsTimer.Start();
+        }
+
+        private void ShowOscilloscopeProperties(OscilloscopeSettings settings)
+        {
+            var dialog = new OscilloscopePropertiesDialog(settings) { Owner = this };
+            if (dialog.ShowDialog() == true && _viewport is not null)
+            {
+                _viewport.UpdateSettings(dialog.UpdatedSettings);
+            }
         }
 
         private void StatsTimer_Tick(object? sender, EventArgs e)

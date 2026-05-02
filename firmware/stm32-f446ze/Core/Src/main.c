@@ -35,8 +35,15 @@
 /* USER CODE BEGIN PD */
 
 #define EVENT_SAMPLE_COUNT 32
+#define EVENT_CHANNEL_COUNT 60
+#define LUT_FRAME_COUNT 4
 #define ADC_MIN 0
 #define ADC_MAX 4095
+
+#define FRAME_HEADER_BYTES (2 + 4 + 4 + 2 + 2)
+#define FRAME_SAMPLE_BYTES (EVENT_CHANNEL_COUNT * EVENT_SAMPLE_COUNT * 2)
+#define FRAME_PARAM_BYTES  (EVENT_CHANNEL_COUNT * 12)
+#define FRAME_BYTES        (FRAME_HEADER_BYTES + FRAME_SAMPLE_BYTES + FRAME_PARAM_BYTES)
 
 /* USER CODE END PD */
 
@@ -72,6 +79,57 @@ static uint16_t clamp_adc(int value)
   return (uint16_t)value;
 }
 
+// Pre-computed LUT: K reference frames, each with samples + params blocks
+// matching the wire format layout exactly so we can memcpy them in one shot.
+static uint8_t lut_samples[LUT_FRAME_COUNT][FRAME_SAMPLE_BYTES];
+static uint8_t lut_params[LUT_FRAME_COUNT][FRAME_PARAM_BYTES];
+
+static void generate_lut(void)
+{
+  for (int f = 0; f < LUT_FRAME_COUNT; f++)
+  {
+    uint16_t *samples = (uint16_t *)lut_samples[f];
+    uint8_t  *params  = lut_params[f];
+
+    for (int c = 0; c < EVENT_CHANNEL_COUNT; c++)
+    {
+      uint16_t baseline = clamp_adc(1500 + (rand() % 101) - 50);
+      int amp = 800 + rand() % 1800;
+      int center = 10 + rand() % 12;
+      int width = 6 + rand() % 10;
+
+      uint16_t peak_height = 0;
+      uint32_t area = 0;
+      uint16_t *ch_samples = samples + c * EVENT_SAMPLE_COUNT;
+
+      for (int i = 0; i < EVENT_SAMPLE_COUNT; i++)
+      {
+        int distance = i - center;
+        if (distance < 0) distance = -distance;
+        int pulse = (distance < width) ? amp * (width - distance) / width : 0;
+        int noise = (rand() % 81) - 40;
+        ch_samples[i] = clamp_adc((int)baseline + pulse + noise);
+        if (ch_samples[i] > peak_height) peak_height = ch_samples[i];
+        if (ch_samples[i] > baseline) area += ch_samples[i] - baseline;
+      }
+
+      uint16_t threshold = baseline + (peak_height - baseline) / 2;
+      uint32_t peak_width = 0;
+      for (int i = 0; i < EVENT_SAMPLE_COUNT; i++)
+      {
+        if (ch_samples[i] >= threshold) peak_width++;
+      }
+
+      // Pack params for this channel: baseline u16, area u32, peakWidth u32, peakHeight u16
+      uint8_t *p = params + c * 12;
+      memcpy(p + 0, &baseline,   2);
+      memcpy(p + 2, &area,       4);
+      memcpy(p + 6, &peak_width, 4);
+      memcpy(p + 10, &peak_height, 2);
+    }
+  }
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -105,16 +163,24 @@ int main(void)
   MX_GPIO_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  // Binary frame: [0xA5][0x5A][event_id u32 LE][timestamp_ms u32 LE][sample_count u16 LE][samples u16[N] LE]
-  #define FRAME_HEADER_BYTES (2 + 4 + 4 + 2)
-  uint8_t frame[FRAME_HEADER_BYTES + EVENT_SAMPLE_COUNT * 2];
+  // Wire frame:
+  //   [0xA5][0x5A][event_id u32][timestamp u32][channel_count u16][sample_count u16]
+  //   [samples u16[C*N] LE]
+  //   [params per channel: baseline u16, area u32, peakWidth u32, peakHeight u16]
+  static uint8_t frame[FRAME_BYTES];
+
+  // Static header fields
   frame[0] = 0xA5;
   frame[1] = 0x5A;
+  uint16_t channel_count = EVENT_CHANNEL_COUNT;
   uint16_t sample_count = EVENT_SAMPLE_COUNT;
-  memcpy(frame + 10, &sample_count, sizeof(sample_count));
+  memcpy(frame + 10, &channel_count, sizeof(channel_count));
+  memcpy(frame + 12, &sample_count, sizeof(sample_count));
+
+  // Pre-compute K LUTs once (~18 KB total)
+  generate_lut();
 
   uint32_t event_id = 0;
-  uint16_t *samples = (uint16_t *)(frame + FRAME_HEADER_BYTES);
 
   /* USER CODE END 2 */
 
@@ -126,26 +192,13 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     uint32_t timestamp = HAL_GetTick();
+    int frame_idx = event_id & (LUT_FRAME_COUNT - 1);
 
-    uint16_t baseline = clamp_adc(1500 + (rand() % 101) - 50);
-    int pulse_amp = 800 + rand() % 1800;
-    int pulse_center = 10 + rand() % 12;
-    int pulse_width = 6 + rand() % 10;
+    // Copy pre-cooked samples + params blocks
+    memcpy(frame + FRAME_HEADER_BYTES, lut_samples[frame_idx], FRAME_SAMPLE_BYTES);
+    memcpy(frame + FRAME_HEADER_BYTES + FRAME_SAMPLE_BYTES, lut_params[frame_idx], FRAME_PARAM_BYTES);
 
-    for (int i = 0; i < EVENT_SAMPLE_COUNT; i++)
-    {
-      int distance = i - pulse_center;
-      if (distance < 0)
-        distance = -distance;
-
-      int pulse = 0;
-      if (distance < pulse_width)
-        pulse = pulse_amp * (pulse_width - distance) / pulse_width;
-
-      int noise = (rand() % 81) - 40;
-      samples[i] = clamp_adc((int)baseline + pulse + noise);
-    }
-
+    // Per-event header updates
     memcpy(frame + 2, &event_id, sizeof(event_id));
     memcpy(frame + 6, &timestamp, sizeof(timestamp));
 

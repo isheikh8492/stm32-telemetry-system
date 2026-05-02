@@ -1,20 +1,21 @@
 using System.Threading.Channels;
 using Telemetry.Core.Models;
 using Telemetry.Engine;
+using ChannelFactory = System.Threading.Channels.Channel;
 
 namespace Telemetry.IO;
 
 public sealed class SerialProducer : IProducer, IDisposable
 {
     private readonly SerialReader _reader;
-    private readonly Channel<Event> _channel;
+    private readonly System.Threading.Channels.Channel<Event> _channel;
     private Task? _readerTask;
     private bool _started;
 
     public SerialProducer(SerialReader reader, int channelCapacity = 1024)
     {
         _reader = reader;
-        _channel = Channel.CreateBounded<Event>(new BoundedChannelOptions(channelCapacity)
+        _channel = ChannelFactory.CreateBounded<Event>(new BoundedChannelOptions(channelCapacity)
         {
             FullMode = BoundedChannelFullMode.DropOldest,
             SingleReader = true,

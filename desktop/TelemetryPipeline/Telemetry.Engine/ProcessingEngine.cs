@@ -89,17 +89,20 @@ public sealed class ProcessingEngine : PollingEngine
     {
         return settings switch
         {
-            OscilloscopeSettings    => ProcessOscilloscope(source),
+            OscilloscopeSettings osc => ProcessOscilloscope(source, osc),
             // future: HistogramSettings hs   => ProcessHistogram(source, hs),
             _                       => null
         };
     }
 
-    private static ProcessedData? ProcessOscilloscope(IDataSource source)
+    private static ProcessedData? ProcessOscilloscope(IDataSource source, OscilloscopeSettings settings)
     {
         var latest = source.PeekLatest();
         if (latest is null)
             return null;
-        return new OscilloscopeFrame(latest.EventId, latest.Samples);
+        if (settings.ChannelId < 0 || settings.ChannelId >= latest.Channels.Count)
+            return null;
+        var channel = latest.Channels[settings.ChannelId];
+        return new OscilloscopeFrame(latest.EventId, channel.Samples);
     }
 }

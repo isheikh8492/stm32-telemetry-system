@@ -10,10 +10,14 @@ namespace Telemetry.IO
         public const int DefaultBaudRate = 2000000;
 
         // Wire format:
-        //   [0xA5][0x5A][event_id u32 LE][timestamp_ms u32 LE][sample_count u16 LE][samples u16[N] LE]
+        //   [0xA5][0x5A][event_id u32 LE][timestamp_ms u32 LE][channel_count u16 LE][sample_count u16 LE]
+        //   [samples u16[C*N] LE]   (channel-major)
+        //   [params per channel: baseline u16, area u32, peakWidth u32, peakHeight u16]   // 12 bytes/channel
         private const byte Sync1 = 0xA5;
         private const byte Sync2 = 0x5A;
-        private const int HeaderBytes = 10;
+        private const int HeaderBytes = 12;
+        private const int ParamBytesPerChannel = 12;
+        private const int MaxChannelCount = 256;
         private const int MaxSampleCount = 4096;
 
         private readonly SerialPort _serialPort;
@@ -56,18 +60,37 @@ namespace Telemetry.IO
                         ReadExact(header, HeaderBytes);
                         uint eventId = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(0, 4));
                         uint timestampMs = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(4, 4));
-                        ushort sampleCount = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(8, 2));
+                        ushort channelCount = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(8, 2));
+                        ushort sampleCount = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(10, 2));
 
-                        if (sampleCount == 0 || sampleCount > MaxSampleCount)
-                            continue;
+                        if (channelCount == 0 || channelCount > MaxChannelCount) continue;
+                        if (sampleCount == 0 || sampleCount > MaxSampleCount) continue;
 
-                        var sampleBytes = new byte[sampleCount * 2];
-                        ReadExact(sampleBytes, sampleBytes.Length);
+                        int sampleBlockBytes = channelCount * sampleCount * 2;
+                        int paramBlockBytes = channelCount * ParamBytesPerChannel;
 
-                        var samples = new ushort[sampleCount];
-                        Buffer.BlockCopy(sampleBytes, 0, samples, 0, sampleBytes.Length);
+                        var sampleBuffer = new byte[sampleBlockBytes];
+                        ReadExact(sampleBuffer, sampleBlockBytes);
 
-                        EventReceived?.Invoke(new Event(eventId, timestampMs, samples));
+                        var paramBuffer = new byte[paramBlockBytes];
+                        ReadExact(paramBuffer, paramBlockBytes);
+
+                        var channels = new Channel[channelCount];
+                        for (int c = 0; c < channelCount; c++)
+                        {
+                            var samples = new ushort[sampleCount];
+                            Buffer.BlockCopy(sampleBuffer, c * sampleCount * 2, samples, 0, sampleCount * 2);
+
+                            int pOff = c * ParamBytesPerChannel;
+                            ushort baseline = BinaryPrimitives.ReadUInt16LittleEndian(paramBuffer.AsSpan(pOff, 2));
+                            uint area = BinaryPrimitives.ReadUInt32LittleEndian(paramBuffer.AsSpan(pOff + 2, 4));
+                            uint peakWidth = BinaryPrimitives.ReadUInt32LittleEndian(paramBuffer.AsSpan(pOff + 6, 4));
+                            ushort peakHeight = BinaryPrimitives.ReadUInt16LittleEndian(paramBuffer.AsSpan(pOff + 10, 2));
+
+                            channels[c] = new Channel(c, samples, new EventParameters(baseline, area, peakWidth, peakHeight));
+                        }
+
+                        EventReceived?.Invoke(new Event(eventId, timestampMs, channels));
                     }
                     catch (TimeoutException)
                     {

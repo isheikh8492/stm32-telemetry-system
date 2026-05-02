@@ -5,7 +5,7 @@ using Telemetry.Engine;
 
 namespace TelemetryViewer.Views.Plots
 {
-    public partial class OscilloscopePlotView : UserControl, IRenderTarget
+    public partial class OscilloscopePlotView : UserControl, IRenderTarget, IContextMenuTarget
     {
         private ScottPlot.Plottables.Signal? _eventSignal;
 
@@ -67,6 +67,26 @@ namespace TelemetryViewer.Views.Plots
 
             oscilloscopePlot.Plot.Axes.SetLimits(left: 0, right: Math.Max(1, values.Length - 1), bottom: 0, top: 5000);
             oscilloscopePlot.Refresh();
+        }
+
+        public void AttachContextMenu(Func<IReadOnlyList<ContextMenuEntry>> entryFactory)
+        {
+            // Disable ScottPlot's default right-click menu so ours wins.
+            oscilloscopePlot.Menu = null;
+
+            var menu = new ContextMenu();
+            menu.Opened += (_, _) =>
+            {
+                menu.Items.Clear();
+                foreach (var entry in entryFactory())
+                {
+                    var item = new MenuItem { Header = entry.Label };
+                    var capturedEntry = entry;
+                    item.Click += (_, _) => capturedEntry.OnInvoke();
+                    menu.Items.Add(item);
+                }
+            };
+            oscilloscopePlot.ContextMenu = menu;
         }
     }
 }
