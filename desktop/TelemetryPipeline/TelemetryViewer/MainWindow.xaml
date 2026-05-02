@@ -31,7 +31,6 @@
                             <TextBlock Style="{StaticResource SidebarFieldLabelStyle}" Text="Baud Rate:" />
                             <ComboBox
                                 x:Name="BaudRateComboBox"
-                                IsEnabled="False"
                                 Style="{StaticResource SidebarComboBoxStyle}" />
                             <Button
                                 x:Name="ConnectButton"

@@ -14,6 +14,7 @@ namespace TelemetryViewer
     {
         private const int BufferCapacity = 10_000;
         private static readonly TimeSpan StatsRefreshInterval = TimeSpan.FromSeconds(1);
+        private static readonly int[] SupportedBaudRates = { 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600 };
 
         private SerialReader? _serialReader;
         private SerialProducer? _producer;
@@ -37,9 +38,9 @@ namespace TelemetryViewer
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            BaudRateComboBox.ItemsSource = new[] { SerialReader.DefaultBaudRate };
+            BaudRateComboBox.ItemsSource = SupportedBaudRates;
             BaudRateComboBox.SelectedItem = SerialReader.DefaultBaudRate;
-            BaudRateComboBox.IsEnabled = false;
+            BaudRateComboBox.IsEnabled = true;
 
             LoadAvailablePorts();
         }
@@ -69,9 +70,15 @@ namespace TelemetryViewer
                 return;
             }
 
+            if (BaudRateComboBox.SelectedItem is not int baudRate)
+            {
+                MessageBox.Show(this, "Select a baud rate.", "Connection", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             try
             {
-                StartPipeline(portName, SerialReader.DefaultBaudRate);
+                StartPipeline(portName, baudRate);
 
                 ConnectButton.Content = "Disconnect";
                 PortComboBox.IsEnabled = false;
@@ -191,7 +198,7 @@ namespace TelemetryViewer
 
             ConnectButton.Content = "Connect";
             PortComboBox.IsEnabled = true;
-            BaudRateComboBox.IsEnabled = false;
+            BaudRateComboBox.IsEnabled = true;
         }
     }
 }
