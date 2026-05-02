@@ -1,4 +1,5 @@
-﻿using Telemetry.IO;
+using System.IO.Ports;
+using Telemetry.IO;
 
 var availablePorts = SerialReader.GetAvailablePorts();
 var selectedPort = args.Length > 0 ? args[0] : availablePorts.FirstOrDefault();
@@ -11,20 +12,35 @@ if (string.IsNullOrWhiteSpace(selectedPort))
     return;
 }
 
-Console.WriteLine($"Opening {selectedPort} at {SerialReader.DefaultBaudRate} baud...");
+Console.WriteLine($"Opening {selectedPort} at {SerialReader.DefaultBaudRate} baud (raw byte dump, 5s)...");
 
-using var reader = new SerialReader(selectedPort, SerialReader.DefaultBaudRate);
-
-reader.EventReceived += telemetryEvent =>
+using var port = new SerialPort(selectedPort, SerialReader.DefaultBaudRate)
 {
-    Console.WriteLine(
-    $"Event={telemetryEvent.EventId}, Time={telemetryEvent.TimestampMs}, Baseline={telemetryEvent.EventParameters.Baseline}, Area={telemetryEvent.EventParameters.Area}, PeakWidth={telemetryEvent.EventParameters.PeakWidth}, PeakHeight={telemetryEvent.EventParameters.PeakHeight}, Samples={telemetryEvent.Samples.Count}");
+    ReadTimeout = 200
 };
+port.Open();
 
-reader.ErrorOccurred += message =>
+var buffer = new byte[1024];
+var deadline = DateTime.UtcNow.AddSeconds(5);
+int totalBytes = 0;
+int printedBytes = 0;
+const int dumpCap = 256;
+
+Console.WriteLine($"--- first {dumpCap} bytes (hex) ---");
+
+while (DateTime.UtcNow < deadline)
 {
-    Console.WriteLine(message);
-};
+    int n;
+    try { n = port.Read(buffer, 0, buffer.Length); }
+    catch (TimeoutException) { continue; }
 
-Console.WriteLine("Listening...");
-reader.Start();
+    totalBytes += n;
+    for (int i = 0; i < n && printedBytes < dumpCap; i++, printedBytes++)
+    {
+        Console.Write($"{buffer[i]:X2} ");
+        if ((printedBytes + 1) % 16 == 0) Console.WriteLine();
+    }
+}
+
+Console.WriteLine();
+Console.WriteLine($"--- total bytes in 5s: {totalBytes} ({totalBytes / 5.0:0} B/s) ---");

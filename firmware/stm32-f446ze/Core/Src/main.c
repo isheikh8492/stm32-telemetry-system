@@ -105,8 +105,16 @@ int main(void)
   MX_GPIO_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+  // Binary frame: [0xA5][0x5A][event_id u32 LE][timestamp_ms u32 LE][sample_count u16 LE][samples u16[N] LE]
+  #define FRAME_HEADER_BYTES (2 + 4 + 4 + 2)
+  uint8_t frame[FRAME_HEADER_BYTES + EVENT_SAMPLE_COUNT * 2];
+  frame[0] = 0xA5;
+  frame[1] = 0x5A;
+  uint16_t sample_count = EVENT_SAMPLE_COUNT;
+  memcpy(frame + 10, &sample_count, sizeof(sample_count));
+
   uint32_t event_id = 0;
-  char msg[512];
+  uint16_t *samples = (uint16_t *)(frame + FRAME_HEADER_BYTES);
 
   /* USER CODE END 2 */
 
@@ -119,13 +127,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
     uint32_t timestamp = HAL_GetTick();
 
-    uint16_t samples[EVENT_SAMPLE_COUNT];
-
     uint16_t baseline = clamp_adc(1500 + (rand() % 101) - 50);
-    uint16_t peak_height = 0;
-    uint32_t area = 0;
-    uint32_t peak_width = 0;
-
     int pulse_amp = 800 + rand() % 1800;
     int pulse_center = 10 + rand() % 12;
     int pulse_width = 6 + rand() % 10;
@@ -137,54 +139,19 @@ int main(void)
         distance = -distance;
 
       int pulse = 0;
-
       if (distance < pulse_width)
-      {
         pulse = pulse_amp * (pulse_width - distance) / pulse_width;
-      }
 
       int noise = (rand() % 81) - 40;
-
       samples[i] = clamp_adc((int)baseline + pulse + noise);
-
-      if (samples[i] > peak_height)
-        peak_height = samples[i];
-
-      if (samples[i] > baseline)
-        area += samples[i] - baseline;
     }
 
-    uint16_t threshold = baseline + ((peak_height - baseline) / 2);
+    memcpy(frame + 2, &event_id, sizeof(event_id));
+    memcpy(frame + 6, &timestamp, sizeof(timestamp));
 
-    for (int i = 0; i < EVENT_SAMPLE_COUNT; i++)
-    {
-      if (samples[i] >= threshold)
-        peak_width++;
-    }
-
-    int len = sprintf(
-        msg,
-        "EVT,%lu,%lu,%u,%lu,%lu,%u,%u",
-        event_id,
-        timestamp,
-        baseline,
-        area,
-        peak_width,
-        peak_height,
-        EVENT_SAMPLE_COUNT);
-
-    for (int i = 0; i < EVENT_SAMPLE_COUNT; i++)
-    {
-      len += sprintf(msg + len, ",%u", samples[i]);
-    }
-
-    len += sprintf(msg + len, "\r\n");
-
-    HAL_UART_Transmit(&huart3, (uint8_t *)msg, len, HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart3, frame, sizeof(frame), HAL_MAX_DELAY);
 
     event_id++;
-
-    HAL_Delay(100);
   }
   /* USER CODE END 3 */
 }
