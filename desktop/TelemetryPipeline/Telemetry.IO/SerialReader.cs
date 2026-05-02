@@ -7,7 +7,7 @@ namespace Telemetry.IO
 {
     public sealed class SerialReader : IDisposable
     {
-        public const int DefaultBaudRate = 115200;
+        public const int DefaultBaudRate = 2000000;
 
         // Wire format:
         //   [0xA5][0x5A][event_id u32 LE][timestamp_ms u32 LE][sample_count u16 LE][samples u16[N] LE]

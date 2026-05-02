@@ -14,7 +14,7 @@ namespace TelemetryViewer
     {
         private const int BufferCapacity = 10_000;
         private static readonly TimeSpan StatsRefreshInterval = TimeSpan.FromSeconds(1);
-        private static readonly int[] SupportedBaudRates = { 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600 };
+        private static readonly int[] SupportedBaudRates = { 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600, 2000000 };
 
         private SerialReader? _serialReader;
         private SerialProducer? _producer;
