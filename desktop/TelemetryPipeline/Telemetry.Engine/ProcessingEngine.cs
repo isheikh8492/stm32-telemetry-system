@@ -1,4 +1,4 @@
-using Telemetry.Core.Models;
+using System.Diagnostics;
 
 namespace Telemetry.Engine;
 
@@ -7,6 +7,9 @@ public sealed class ProcessingEngine : PollingEngine
     private readonly IDataSource _source;
     private readonly DataStore _store;
     private readonly Dictionary<Guid, (PlotSettings settings, uint eventId)> _fingerprints = new();
+
+    private readonly object _metricsLock = new();
+    private readonly Dictionary<Type, (double totalMs, long count)> _computeMetrics = new();
 
     public ProcessingEngine(IDataSource source, DataStore store, TimeSpan interval)
         : base(interval)
@@ -22,23 +25,22 @@ public sealed class ProcessingEngine : PollingEngine
             return;
 
         var allSettings = _store.GetAllSettings();
-        IReadOnlyList<Event>? events = null;   // lazy snapshot
         var activeIds = new HashSet<Guid>(allSettings.Count);
 
         foreach (var settings in allSettings)
         {
             activeIds.Add(settings.PlotId);
 
-            // Fingerprint = (settings, eventId). Reprocess on either change.
             var fingerprint = (settings, id.Value);
             if (_fingerprints.TryGetValue(settings.PlotId, out var prev) && prev == fingerprint)
                 continue;
 
-            events ??= _source.Snapshot();
-            if (events.Count == 0)
-                return;
+            // Stopwatch.GetTimestamp avoids the per-iteration Stopwatch allocation.
+            var startTicks = Stopwatch.GetTimestamp();
+            var processed = ProcessFor(settings, _source);
+            var elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
+            RecordComputeTime(settings.GetType(), elapsedMs);
 
-            var processed = ProcessFor(settings, events);
             if (processed is not null)
             {
                 _store.SetProcessed(settings.PlotId, processed);
@@ -46,7 +48,6 @@ public sealed class ProcessingEngine : PollingEngine
             }
         }
 
-        // Drop fingerprints for plots that have been unregistered.
         if (_fingerprints.Count > activeIds.Count)
         {
             var stale = _fingerprints.Keys.Where(k => !activeIds.Contains(k)).ToList();
@@ -55,19 +56,50 @@ public sealed class ProcessingEngine : PollingEngine
         }
     }
 
-    private static ProcessedData? ProcessFor(PlotSettings settings, IReadOnlyList<Event> events)
+    public IReadOnlyDictionary<Type, double> GetAverageComputeTimes()
+    {
+        lock (_metricsLock)
+        {
+            return _computeMetrics.ToDictionary(
+                kv => kv.Key,
+                kv => kv.Value.count > 0 ? kv.Value.totalMs / kv.Value.count : 0.0);
+        }
+    }
+
+    public void ResetMetrics()
+    {
+        lock (_metricsLock)
+            _computeMetrics.Clear();
+    }
+
+    private void RecordComputeTime(Type settingsType, double elapsedMs)
+    {
+        lock (_metricsLock)
+        {
+            if (_computeMetrics.TryGetValue(settingsType, out var existing))
+                _computeMetrics[settingsType] = (existing.totalMs + elapsedMs, existing.count + 1);
+            else
+                _computeMetrics[settingsType] = (elapsedMs, 1);
+        }
+    }
+
+    // Each plot type chooses its own data-access pattern: PeekLatest (cheap)
+    // for "latest event only" plots, Snapshot (full copy) for plots that need history.
+    private static ProcessedData? ProcessFor(PlotSettings settings, IDataSource source)
     {
         return settings switch
         {
-            OscilloscopeSettings    => ProcessOscilloscope(events),
-            // future plot types slot in here
+            OscilloscopeSettings    => ProcessOscilloscope(source),
+            // future: HistogramSettings hs   => ProcessHistogram(source, hs),
             _                       => null
         };
     }
 
-    private static ProcessedData ProcessOscilloscope(IReadOnlyList<Event> events)
+    private static ProcessedData? ProcessOscilloscope(IDataSource source)
     {
-        var latest = events[events.Count - 1];
+        var latest = source.PeekLatest();
+        if (latest is null)
+            return null;
         return new OscilloscopeFrame(latest.EventId, latest.Samples);
     }
 }

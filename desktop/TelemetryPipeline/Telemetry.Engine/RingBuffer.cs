@@ -37,6 +37,17 @@ public sealed class RingBuffer : IDataSource
         }
     }
 
+    public Event? PeekLatest()
+    {
+        lock (_lock)
+        {
+            if (_count == 0)
+                return null;
+            int last = (_writeIndex - 1 + _events.Length) % _events.Length;
+            return _events[last];
+        }
+    }
+
     public void Append(Event evt)
     {
         lock (_lock)
