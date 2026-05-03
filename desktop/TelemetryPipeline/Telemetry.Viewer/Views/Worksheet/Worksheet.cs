@@ -28,7 +28,7 @@ public sealed class Worksheet
 
     private readonly Dictionary<Guid, PlotItem> _plots = new();
     private readonly Dictionary<Type, Func<PlotSettings, IReadOnlyList<ContextMenuProvider>>> _menus = new();
-    private readonly Dictionary<Type, Func<PlotItem>> _viewFactories = new();
+    private readonly Dictionary<Type, Func<PlotItem>> _itemFactories = new();
     private readonly Dictionary<Type, Size> _defaultSizes = new();
 
     private Canvas? _canvas;
@@ -57,7 +57,7 @@ public sealed class Worksheet
         where TItem : PlotItem
     {
         _menus[typeof(TSettings)] = s => menuBuilder((TSettings)s);
-        _viewFactories[typeof(TSettings)] = () => createItem();
+        _itemFactories[typeof(TSettings)] = () => createItem();
         _defaultSizes[typeof(TSettings)] = defaultSize;
 
         PlotTypes.Add(new PlotTypeOption(
@@ -129,7 +129,7 @@ public sealed class Worksheet
     private void AddPlotAt(PlotSettings settings, Point worksheetPoint)
     {
         if (_canvas is null) return;
-        if (!_viewFactories.TryGetValue(settings.GetType(), out var itemFactory)) return;
+        if (!_itemFactories.TryGetValue(settings.GetType(), out var itemFactory)) return;
 
         var item = itemFactory();
         item.DataContext = settings;

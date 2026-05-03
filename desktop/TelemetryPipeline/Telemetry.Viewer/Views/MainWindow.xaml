@@ -78,43 +78,69 @@
                         <TextBlock Style="{StaticResource SidebarHeaderTextStyle}" Text="Processing Stats" />
                         <StackPanel Style="{StaticResource SidebarSectionBodyStyle}">
                             <Grid>
+                                <Grid.Resources>
+                                    <Style x:Key="StatLabel" TargetType="TextBlock">
+                                        <Setter Property="Padding" Value="6,3" />
+                                    </Style>
+                                    <Style x:Key="StatValue" TargetType="TextBlock">
+                                        <Setter Property="Padding" Value="6,3" />
+                                        <Setter Property="HorizontalAlignment" Value="Right" />
+                                        <Setter Property="FontFamily" Value="Consolas" />
+                                    </Style>
+                                </Grid.Resources>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
+
                                 <TextBlock
                                     Grid.Row="0"
                                     Grid.Column="0"
-                                    Margin="0,0,8,2"
-                                    Text="Event rate:" />
+                                    Style="{StaticResource StatLabel}"
+                                    Text="Total events" />
                                 <TextBlock
                                     Grid.Row="0"
                                     Grid.Column="1"
-                                    Margin="0,0,0,2"
+                                    Style="{StaticResource StatValue}"
+                                    Text="{Binding Stats.TotalEventsText}" />
+
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Grid.Column="0"
+                                    Style="{StaticResource StatLabel}"
+                                    Text="Event rate" />
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    Style="{StaticResource StatValue}"
                                     Text="{Binding Stats.EventRateText}" />
+
                                 <TextBlock
-                                    Grid.Row="1"
+                                    Grid.Row="2"
                                     Grid.Column="0"
-                                    Margin="0,0,8,2"
-                                    Text="Processing:" />
+                                    Style="{StaticResource StatLabel}"
+                                    Text="Processing" />
                                 <TextBlock
-                                    Grid.Row="1"
+                                    Grid.Row="2"
                                     Grid.Column="1"
-                                    Margin="0,0,0,2"
+                                    Style="{StaticResource StatValue}"
                                     Text="{Binding Stats.ProcessingTimeText}" />
+
                                 <TextBlock
-                                    Grid.Row="2"
+                                    Grid.Row="3"
                                     Grid.Column="0"
-                                    Margin="0,0,8,0"
-                                    Text="Render:" />
+                                    Style="{StaticResource StatLabel}"
+                                    Text="Render" />
                                 <TextBlock
-                                    Grid.Row="2"
+                                    Grid.Row="3"
                                     Grid.Column="1"
+                                    Style="{StaticResource StatValue}"
                                     Text="{Binding Stats.RenderTimeText}" />
                             </Grid>
                         </StackPanel>

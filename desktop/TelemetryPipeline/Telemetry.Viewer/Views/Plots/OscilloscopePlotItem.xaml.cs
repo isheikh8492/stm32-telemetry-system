@@ -70,8 +70,22 @@ namespace Telemetry.Viewer.Views.Plots
             oscilloscopePlot.Plot.Axes.Rules.Add(new ScottPlot.AxisRules.LockedVertical(oscilloscopePlot.Plot.Axes.Left, 0, 5000));
             oscilloscopePlot.Plot.Axes.Rules.Add(new ScottPlot.AxisRules.LockedHorizontal(oscilloscopePlot.Plot.Axes.Bottom, 0, 32));
 
-            oscilloscopePlot.Plot.Title($"Live Telemetry — ch {Osc.ChannelId}");
-            oscilloscopePlot.Plot.XLabel("Sample");
+            // Hide gridlines inside the data area; the worksheet grid is the
+            // visual reference, the plot interior should stay clean.
+            oscilloscopePlot.Plot.Grid.IsVisible = false;
+
+            // Pin tick spacing so the axis layout doesn't reflow with size.
+            // Y: majors every 1000 (with labels), minors every 200 (no labels).
+            var leftTicks = new List<ScottPlot.Tick>();
+            for (double v = 0; v <= 5000; v += 200)
+            {
+                bool isMajor = ((int)v) % 1000 == 0;
+                leftTicks.Add(new ScottPlot.Tick(v, isMajor ? v.ToString("N0") : "", isMajor));
+            }
+            oscilloscopePlot.Plot.Axes.Left.TickGenerator   = new ScottPlot.TickGenerators.NumericManual(leftTicks.ToArray());
+            oscilloscopePlot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericFixedInterval(4);
+
+            oscilloscopePlot.Plot.XLabel("Window (s)");
             oscilloscopePlot.Plot.YLabel("ADC");
             oscilloscopePlot.Plot.Axes.SetLimits(left: 0, right: 32, bottom: 0, top: 5000);
             oscilloscopePlot.Refresh();

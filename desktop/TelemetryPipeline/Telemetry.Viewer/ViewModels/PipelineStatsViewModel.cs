@@ -18,6 +18,13 @@ public sealed class PipelineStatsViewModel : ObservableObject, IDisposable
     private long _lastTotalAppended;
     private DateTime _lastSampleTime;
 
+    private string _totalEventsText = "0";
+    public string TotalEventsText
+    {
+        get => _totalEventsText;
+        private set => SetProperty(ref _totalEventsText, value);
+    }
+
     private string _eventRateText = "0 ev/s";
     public string EventRateText
     {
@@ -60,6 +67,7 @@ public sealed class PipelineStatsViewModel : ObservableObject, IDisposable
         }
         _session = null;
 
+        TotalEventsText = "0";
         EventRateText = "0 ev/s";
         ProcessingTimeText = "—";
         RenderTimeText = "—";
@@ -75,6 +83,7 @@ public sealed class PipelineStatsViewModel : ObservableObject, IDisposable
         var rate = elapsedSec > 0 ? (currentTotal - _lastTotalAppended) / elapsedSec : 0;
         _lastTotalAppended = currentTotal;
         _lastSampleTime = now;
+        TotalEventsText = $"{currentTotal:N0}";
         EventRateText = $"{rate:0} ev/s";
 
         var processingTimes = _session.Viewport.GetProcessingTimes();
