@@ -1,10 +1,10 @@
 using System.Windows;
 using System.Windows.Controls;
 using ScottPlot.DataSources;
-using Telemetry.Viewer.ContextMenu;
-using Telemetry.Viewer.Engine;
-using Telemetry.Viewer.Plotting;
-using Telemetry.Viewer.Plotting.Oscilloscope;
+using Telemetry.Viewer.Models;
+using Telemetry.Viewer.Models.Plots;
+using Telemetry.Viewer.Services.ContextMenu;
+using Telemetry.Viewer.Services.Pipeline;
 
 namespace Telemetry.Viewer.Views.Plots
 {

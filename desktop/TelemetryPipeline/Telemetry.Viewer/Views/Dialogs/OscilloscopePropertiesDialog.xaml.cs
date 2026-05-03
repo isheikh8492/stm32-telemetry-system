@@ -1,5 +1,5 @@
 using System.Windows;
-using Telemetry.Viewer.Plotting.Oscilloscope;
+using Telemetry.Viewer.Models.Plots;
 
 namespace Telemetry.Viewer.Views.Dialogs
 {

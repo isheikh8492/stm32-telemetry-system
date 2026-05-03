@@ -1,4 +1,4 @@
-namespace Telemetry.Viewer.Worksheet;
+namespace Telemetry.Viewer.Models.Worksheet;
 
 // Anything that can live in the worksheet (plots, in the future possibly
 // non-plot widgets like text panels, status indicators, etc.).

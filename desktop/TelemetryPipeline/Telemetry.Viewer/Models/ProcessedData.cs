@@ -1,4 +1,4 @@
-namespace Telemetry.Viewer.Plotting;
+namespace Telemetry.Viewer.Models;
 
 // Empty abstract root for everything the ProcessingEngine emits.
 // Two concrete-shape branches inherit from it:

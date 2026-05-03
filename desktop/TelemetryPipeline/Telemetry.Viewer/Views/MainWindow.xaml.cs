@@ -1,16 +1,16 @@
-﻿using System.Threading;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using Telemetry.Engine;
 using Telemetry.IO;
-using Telemetry.Viewer.ContextMenu;
-using Telemetry.Viewer.DataSources;
-using Telemetry.Viewer.Engine;
-using Telemetry.Viewer.Plotting.Oscilloscope;
+using Telemetry.Viewer.Models.Plots;
+using Telemetry.Viewer.Services.ContextMenu;
+using Telemetry.Viewer.Services.DataSources;
+using Telemetry.Viewer.Services.Pipeline;
 using Telemetry.Viewer.Views.Dialogs;
 
-namespace Telemetry.Viewer
+namespace Telemetry.Viewer.Views
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml

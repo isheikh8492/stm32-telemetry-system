@@ -1,6 +1,4 @@
-using Telemetry.Viewer.Plotting;
-
-namespace Telemetry.Viewer.Plotting.Histogram;
+namespace Telemetry.Viewer.Models.Plots;
 
 // One bin of a 1D histogram. Self-describing: contains its own range and count
 // so the renderer doesn't need to consult HistogramSettings to interpret the data.

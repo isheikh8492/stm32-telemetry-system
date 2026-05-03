@@ -1,6 +1,6 @@
-using Telemetry.Viewer.Plotting;
+using Telemetry.Viewer.Models;
 
-namespace Telemetry.Viewer.ContextMenu;
+namespace Telemetry.Viewer.Services.ContextMenu;
 
 public interface IContextMenuProvider
 {

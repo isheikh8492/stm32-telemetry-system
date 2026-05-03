@@ -1,7 +1,7 @@
 using Telemetry.Core.Models;
 using Telemetry.Engine;
 
-namespace Telemetry.Viewer.DataSources;
+namespace Telemetry.Viewer.Services.DataSources;
 
 // Adapter exposing a Telemetry.Engine.RingBuffer through IDataSource.
 // The buffer itself doesn't know about IDataSource; this thin shim translates.

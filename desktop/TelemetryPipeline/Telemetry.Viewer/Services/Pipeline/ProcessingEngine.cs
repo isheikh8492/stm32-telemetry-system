@@ -1,9 +1,9 @@
 using System.Diagnostics;
-using Telemetry.Viewer.DataSources;
-using Telemetry.Viewer.Plotting;
-using Telemetry.Viewer.Plotting.Oscilloscope;
+using Telemetry.Viewer.Models;
+using Telemetry.Viewer.Models.Plots;
+using Telemetry.Viewer.Services.DataSources;
 
-namespace Telemetry.Viewer.Engine;
+namespace Telemetry.Viewer.Services.Pipeline;
 
 public sealed class ProcessingEngine : PollingEngine
 {

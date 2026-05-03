@@ -1,4 +1,4 @@
-namespace Telemetry.Viewer.Engine;
+namespace Telemetry.Viewer.Services.Pipeline;
 
 public abstract class PollingEngine : IDisposable
 {

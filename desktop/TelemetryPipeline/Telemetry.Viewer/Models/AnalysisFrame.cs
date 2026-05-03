@@ -1,4 +1,4 @@
-namespace Telemetry.Viewer.Plotting;
+namespace Telemetry.Viewer.Models;
 
 // Across-events analysis base. The frame represents the CURRENT state of
 // an accumulator that absorbs events over time; EventsAccumulated advances

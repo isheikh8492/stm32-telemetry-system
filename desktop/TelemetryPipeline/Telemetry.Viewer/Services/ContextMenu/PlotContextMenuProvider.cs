@@ -1,6 +1,6 @@
-using Telemetry.Viewer.Plotting;
+using Telemetry.Viewer.Models;
 
-namespace Telemetry.Viewer.ContextMenu;
+namespace Telemetry.Viewer.Services.ContextMenu;
 
 // Type-dispatched provider: callers register a builder per concrete PlotSettings type.
 public sealed class PlotContextMenuProvider : IContextMenuProvider

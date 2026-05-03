@@ -1,8 +1,8 @@
-using Telemetry.Viewer.ContextMenu;
-using Telemetry.Viewer.DataSources;
-using Telemetry.Viewer.Plotting;
+using Telemetry.Viewer.Models;
+using Telemetry.Viewer.Services.ContextMenu;
+using Telemetry.Viewer.Services.DataSources;
 
-namespace Telemetry.Viewer.Engine;
+namespace Telemetry.Viewer.Services.Pipeline;
 
 public sealed class ViewportSession : IDisposable
 {

@@ -1,6 +1,6 @@
 using Telemetry.Core.Models;
 
-namespace Telemetry.Viewer.DataSources;
+namespace Telemetry.Viewer.Services.DataSources;
 
 // Read-side contract that engines and plots consume. Implementations adapt
 // any backing store (live RingBuffer, recorded file replay, DB query, network

@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using Telemetry.Viewer.Plotting;
+using Telemetry.Viewer.Models;
 
-namespace Telemetry.Viewer.Engine;
+namespace Telemetry.Viewer.Services.Pipeline;
 
 public sealed class RenderingEngine : PollingEngine
 {
