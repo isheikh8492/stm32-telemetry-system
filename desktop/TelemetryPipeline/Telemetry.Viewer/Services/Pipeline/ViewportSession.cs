@@ -1,6 +1,5 @@
 using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Models.Worksheet;
-using Telemetry.Viewer.Services.ContextMenu;
 using Telemetry.Viewer.Services.DataSources;
 
 namespace Telemetry.Viewer.Services.Pipeline;
@@ -13,14 +12,12 @@ public sealed class ViewportSession : IDisposable
     private readonly DataStore _store = new();
     private readonly ProcessingEngine _processing;
     private readonly RenderingEngine _rendering;
-    private readonly IContextMenuProvider? _menuProvider;
 
     public ViewportSession(
         IDataSource source,
         SynchronizationContext uiContext,
         TimeSpan? processingInterval = null,
-        TimeSpan? renderingInterval = null,
-        IContextMenuProvider? contextMenuProvider = null)
+        TimeSpan? renderingInterval = null)
     {
         _processing = new ProcessingEngine(
             source, _store,
@@ -29,8 +26,6 @@ public sealed class ViewportSession : IDisposable
         _rendering = new RenderingEngine(
             uiContext, _store,
             renderingInterval ?? DefaultRenderingInterval);
-
-        _menuProvider = contextMenuProvider;
     }
 
     public bool IsRunning => _processing.IsRunning && _rendering.IsRunning;
@@ -45,15 +40,6 @@ public sealed class ViewportSession : IDisposable
     {
         _store.UpsertSettings(plotView.Settings);
         _rendering.Register(plotView.Settings.PlotId, plotView);
-
-        if (_menuProvider is not null)
-        {
-            plotView.AttachContextMenu(() =>
-            {
-                var current = _store.GetSettings(plotView.Settings.PlotId) ?? plotView.Settings;
-                return _menuProvider.GetMenuFor(current);
-            });
-        }
     }
 
     public void RemovePlot(Guid plotId)

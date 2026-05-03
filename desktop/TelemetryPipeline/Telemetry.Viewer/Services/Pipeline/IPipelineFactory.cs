@@ -1,5 +1,4 @@
 using System.Threading;
-using Telemetry.Viewer.Services.ContextMenu;
 
 namespace Telemetry.Viewer.Services.Pipeline;
 
@@ -9,9 +8,5 @@ namespace Telemetry.Viewer.Services.Pipeline;
 // buffer, and viewport, all disposed on Disconnect.
 public interface IPipelineFactory
 {
-    IPipelineSession Create(
-        string portName,
-        int baudRate,
-        SynchronizationContext uiContext,
-        IContextMenuProvider? contextMenuProvider = null);
+    IPipelineSession Create(string portName, int baudRate, SynchronizationContext uiContext);
 }

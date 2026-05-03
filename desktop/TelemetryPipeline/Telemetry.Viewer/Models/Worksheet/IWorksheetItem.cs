@@ -23,7 +23,7 @@ public interface IPlotView : IWorksheetItem
     // view's own concern — typically wired to Loaded + Settings.PropertyChanged.
     void Render(ProcessedData data);
 
-    // Factory is invoked each time the menu opens so it always reflects the
+    // Provider is invoked each time the menu opens so it always reflects the
     // latest PlotSettings.
-    void AttachContextMenu(Func<IReadOnlyList<ContextMenuEntry>> entryFactory);
+    void AttachContextMenu(Func<IReadOnlyList<ContextMenuProvider>> contextMenuProvider);
 }

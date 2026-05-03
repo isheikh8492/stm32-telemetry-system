@@ -29,8 +29,8 @@ namespace Telemetry.Viewer.Views.Plots
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            Settings.PropertyChanged += (_, _) => DrawScaffold();
-            DrawScaffold();
+            Settings.PropertyChanged += (_, _) => ApplySettings();
+            ApplySettings();
 
             var window = Window.GetWindow(this);
             if (window?.DataContext is MainWindowViewModel vm)
@@ -40,7 +40,7 @@ namespace Telemetry.Viewer.Views.Plots
         // Settings-driven scaffolding: axes, labels, ranges, title. Idempotent —
         // called on Loaded and on every Settings.PropertyChanged. Plot.Clear
         // wipes plottables so the next Render call recreates the data series.
-        private void DrawScaffold()
+        private void ApplySettings()
         {
             oscilloscopePlot.Plot.Clear();
             _eventSignal = null;
@@ -79,23 +79,7 @@ namespace Telemetry.Viewer.Views.Plots
             oscilloscopePlot.Refresh();
         }
 
-        public void AttachContextMenu(Func<IReadOnlyList<ContextMenuEntry>> entryFactory)
-        {
-            oscilloscopePlot.Menu = null;
-
-            var menu = new System.Windows.Controls.ContextMenu();
-            menu.Opened += (_, _) =>
-            {
-                menu.Items.Clear();
-                foreach (var entry in entryFactory())
-                {
-                    var item = new MenuItem { Header = entry.Label };
-                    var capturedEntry = entry;
-                    item.Click += (_, _) => capturedEntry.OnInvoke();
-                    menu.Items.Add(item);
-                }
-            };
-            oscilloscopePlot.ContextMenu = menu;
-        }
+        public void AttachContextMenu(Func<IReadOnlyList<ContextMenuProvider>> contextMenuProvider)
+            => PlotContextMenuFactory.Attach(oscilloscopePlot, contextMenuProvider);
     }
 }

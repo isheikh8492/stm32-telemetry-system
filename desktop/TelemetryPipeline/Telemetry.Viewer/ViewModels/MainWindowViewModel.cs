@@ -5,9 +5,8 @@ using Telemetry.IO;
 using Telemetry.Viewer.Common;
 using Telemetry.Viewer.Models.Plots;
 using Telemetry.Viewer.Models.Worksheet;
-using Telemetry.Viewer.Services.ContextMenu;
 using Telemetry.Viewer.Services.Pipeline;
-using Telemetry.Viewer.Views.Dialogs;
+using Telemetry.Viewer.Views.Worksheet;
 
 namespace Telemetry.Viewer.ViewModels;
 
@@ -18,7 +17,6 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         { 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600, 2000000 };
 
     private readonly IPipelineFactory _pipelineFactory;
-    private readonly PlotContextMenuProvider _menuProvider;
 
     private IPipelineSession? _session;
     private DispatcherTimer? _statsTimer;
@@ -31,12 +29,6 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
         SupportedBaudRates = DefaultBaudRates;
         _selectedBaudRate = SerialReader.DefaultBaudRate;
-
-        _menuProvider = new PlotContextMenuProvider();
-        _menuProvider.Register<OscilloscopeSettings>(s => new[]
-        {
-            new ContextMenuEntry("Properties...", () => ShowOscilloscopeProperties(s))
-        });
 
         ToggleConnectionCommand = new RelayCommand(ToggleConnection, CanToggleConnection);
         RefreshPortsCommand = new RelayCommand(LoadAvailablePorts);
@@ -163,7 +155,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             var ui = SynchronizationContext.Current
                 ?? throw new InvalidOperationException("UI SynchronizationContext is null.");
 
-            _session = _pipelineFactory.Create(SelectedPort!, SelectedBaudRate, ui, _menuProvider);
+            _session = _pipelineFactory.Create(SelectedPort!, SelectedBaudRate, ui);
             _session.Reader.ErrorOccurred += OnSerialError;
 
             Worksheet.BindSession(_session.Viewport);
@@ -240,17 +232,6 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     {
         Application.Current.Dispatcher.Invoke(() =>
             MessageBox.Show(message, "Serial Reader Error", MessageBoxButton.OK, MessageBoxImage.Error));
-    }
-
-    // Mutating PlotSettings on OK bumps Version → ProcessingEngine reprocesses
-    // on its next tick. No collection-replace dance; no UpdateSettings call.
-    private void ShowOscilloscopeProperties(OscilloscopeSettings settings)
-    {
-        var dialog = new OscilloscopePropertiesDialog(settings)
-        {
-            Owner = Application.Current.MainWindow
-        };
-        dialog.ShowDialog();
     }
 
     public void Dispose() => Disconnect();
