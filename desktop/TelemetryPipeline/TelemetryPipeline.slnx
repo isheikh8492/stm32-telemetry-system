@@ -3,5 +3,5 @@
   <Project Path="Telemetry.Core/Telemetry.Core.csproj" />
   <Project Path="Telemetry.Engine/Telemetry.Engine.csproj" />
   <Project Path="Telemetry.IO/Telemetry.IO.csproj" />
-  <Project Path="TelemetryViewer/Telemetry.Viewer.csproj" />
+  <Project Path="Telemetry.Viewer/Telemetry.Viewer.csproj" />
 </Solution>
