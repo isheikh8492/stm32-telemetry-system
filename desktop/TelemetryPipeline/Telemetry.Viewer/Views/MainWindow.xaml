@@ -61,13 +61,7 @@
                     <StackPanel Style="{StaticResource SidebarSectionStyle}">
                         <TextBlock Style="{StaticResource SidebarHeaderTextStyle}" Text="Display Settings" />
                         <StackPanel Style="{StaticResource SidebarSectionBodyStyle}">
-                            <CheckBox Content="Auto-scroll" Style="{StaticResource SidebarCheckBoxStyle}" />
                             <CheckBox Content="Show grid" Style="{StaticResource SidebarCheckBoxStyle}" />
-                            <TextBlock Margin="0,6,0,4" Text="Update Rate (Hz):" />
-                            <Slider
-                                Maximum="60"
-                                Minimum="1"
-                                Value="30" />
                         </StackPanel>
                     </StackPanel>
 
