@@ -88,7 +88,7 @@
                                     Grid.Row="0"
                                     Grid.Column="1"
                                     Margin="0,0,0,2"
-                                    Text="{Binding EventRateText}" />
+                                    Text="{Binding Stats.EventRateText}" />
                                 <TextBlock
                                     Grid.Row="1"
                                     Grid.Column="0"
@@ -98,7 +98,7 @@
                                     Grid.Row="1"
                                     Grid.Column="1"
                                     Margin="0,0,0,2"
-                                    Text="{Binding ProcessingTimeText}" />
+                                    Text="{Binding Stats.ProcessingTimeText}" />
                                 <TextBlock
                                     Grid.Row="2"
                                     Grid.Column="0"
@@ -107,7 +107,7 @@
                                 <TextBlock
                                     Grid.Row="2"
                                     Grid.Column="1"
-                                    Text="{Binding RenderTimeText}" />
+                                    Text="{Binding Stats.RenderTimeText}" />
                             </Grid>
                         </StackPanel>
                     </StackPanel>

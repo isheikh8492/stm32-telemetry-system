@@ -1,6 +1,5 @@
 using System.Threading;
 using System.Windows;
-using System.Windows.Threading;
 using Telemetry.IO;
 using Telemetry.Viewer.Common;
 using Telemetry.Viewer.Models.Plots;
@@ -12,16 +11,12 @@ namespace Telemetry.Viewer.ViewModels;
 
 public sealed class MainWindowViewModel : ObservableObject, IDisposable
 {
-    private static readonly TimeSpan StatsRefreshInterval = TimeSpan.FromSeconds(1);
     private static readonly int[] DefaultBaudRates =
         { 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600, 2000000 };
 
     private readonly IPipelineFactory _pipelineFactory;
 
     private IPipelineSession? _session;
-    private DispatcherTimer? _statsTimer;
-    private long _lastTotalAppended;
-    private DateTime _lastStatsSampleTime;
 
     public MainWindowViewModel(IPipelineFactory pipelineFactory)
     {
@@ -40,6 +35,10 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     // ---- Worksheet (app-lifetime; survives connect/disconnect) ----
 
     public Worksheet Worksheet { get; } = new();
+
+    // ---- Pipeline stats (own VM; bound by sidebar's stats panel) ----
+
+    public PipelineStatsViewModel Stats { get; } = new();
 
     // ---- Bindable connection state ----
 
@@ -92,27 +91,6 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     public bool IsDisconnected => !IsConnected;
     public string ConnectButtonText => IsConnected ? "Disconnect" : "Connect";
 
-    private string _eventRateText = "0 ev/s";
-    public string EventRateText
-    {
-        get => _eventRateText;
-        private set => SetProperty(ref _eventRateText, value);
-    }
-
-    private string _processingTimeText = "—";
-    public string ProcessingTimeText
-    {
-        get => _processingTimeText;
-        private set => SetProperty(ref _processingTimeText, value);
-    }
-
-    private string _renderTimeText = "—";
-    public string RenderTimeText
-    {
-        get => _renderTimeText;
-        private set => SetProperty(ref _renderTimeText, value);
-    }
-
     // ---- Commands ----
 
     public RelayCommand ToggleConnectionCommand { get; }
@@ -160,13 +138,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
             Worksheet.BindSession(_session.Viewport);
             _session.Start();
+            Stats.Start(_session);
             IsConnected = true;
-
-            _lastTotalAppended = _session.Buffer.TotalAppended;
-            _lastStatsSampleTime = DateTime.UtcNow;
-            _statsTimer = new DispatcherTimer { Interval = StatsRefreshInterval };
-            _statsTimer.Tick += StatsTimer_Tick;
-            _statsTimer.Start();
         }
         catch (Exception ex)
         {
@@ -177,13 +150,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     private void Disconnect()
     {
-        if (_statsTimer is not null)
-        {
-            _statsTimer.Stop();
-            _statsTimer.Tick -= StatsTimer_Tick;
-            _statsTimer = null;
-        }
-
+        Stats.Stop();
         Worksheet.UnbindSession();
 
         if (_session is not null)
@@ -194,38 +161,12 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         IsConnected = false;
-        EventRateText = "0 ev/s";
-        ProcessingTimeText = "—";
-        RenderTimeText = "—";
     }
 
     private void AddOscilloscope()
     {
         var settings = new OscilloscopeSettings(plotId: Guid.NewGuid(), channelId: 0);
         Worksheet.AddPlot(settings);
-    }
-
-    private void StatsTimer_Tick(object? sender, EventArgs e)
-    {
-        if (_session is null) return;
-
-        var now = DateTime.UtcNow;
-        var elapsedSec = (now - _lastStatsSampleTime).TotalSeconds;
-        var currentTotal = _session.Buffer.TotalAppended;
-        var rate = elapsedSec > 0 ? (currentTotal - _lastTotalAppended) / elapsedSec : 0;
-        _lastTotalAppended = currentTotal;
-        _lastStatsSampleTime = now;
-        EventRateText = $"{rate:0} ev/s";
-
-        var processingTimes = _session.Viewport.GetProcessingTimes();
-        ProcessingTimeText = processingTimes.TryGetValue(typeof(OscilloscopeSettings), out var procMs)
-            ? $"{procMs:0.000} ms"
-            : "—";
-
-        var renderTimes = _session.Viewport.GetRenderingTimes();
-        RenderTimeText = renderTimes.TryGetValue(typeof(OscilloscopeFrame), out var renderMs)
-            ? $"{renderMs:0.000} ms"
-            : "—";
     }
 
     private void OnSerialError(string message)
