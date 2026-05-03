@@ -2,8 +2,9 @@
     x:Class="Telemetry.Viewer.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="clr-namespace:Telemetry.Viewer"
-    StartupUri="Views/MainWindow.xaml">
+    xmlns:local="clr-namespace:Telemetry.Viewer">
+    <!--  StartupUri removed: MainWindow is resolved from DI container in App.xaml.cs OnStartup.  -->
+
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>

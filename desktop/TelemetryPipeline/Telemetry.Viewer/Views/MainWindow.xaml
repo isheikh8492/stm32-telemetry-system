@@ -27,15 +27,20 @@
                         <TextBlock Style="{StaticResource SidebarHeaderTextStyle}" Text="Connection" />
                         <StackPanel Style="{StaticResource SidebarSectionBodyStyle}">
                             <TextBlock Style="{StaticResource SidebarFieldLabelStyle}" Text="Port:" />
-                            <ComboBox x:Name="PortComboBox" Style="{StaticResource SidebarComboBoxStyle}" />
+                            <ComboBox
+                                IsEnabled="{Binding IsDisconnected}"
+                                ItemsSource="{Binding AvailablePorts}"
+                                SelectedItem="{Binding SelectedPort, Mode=TwoWay}"
+                                Style="{StaticResource SidebarComboBoxStyle}" />
                             <TextBlock Style="{StaticResource SidebarFieldLabelStyle}" Text="Baud Rate:" />
                             <ComboBox
-                                x:Name="BaudRateComboBox"
+                                IsEnabled="{Binding IsDisconnected}"
+                                ItemsSource="{Binding SupportedBaudRates}"
+                                SelectedItem="{Binding SelectedBaudRate, Mode=TwoWay}"
                                 Style="{StaticResource SidebarComboBoxStyle}" />
                             <Button
-                                x:Name="ConnectButton"
-                                Click="ConnectButton_Click"
-                                Content="Connect"
+                                Command="{Binding ToggleConnectionCommand}"
+                                Content="{Binding ConnectButtonText}"
                                 Style="{StaticResource SidebarButtonStyle}" />
                         </StackPanel>
                     </StackPanel>
@@ -86,32 +91,29 @@
                                     Margin="0,0,8,2"
                                     Text="Event rate:" />
                                 <TextBlock
-                                    x:Name="EventRateText"
                                     Grid.Row="0"
                                     Grid.Column="1"
                                     Margin="0,0,0,2"
-                                    Text="0 ev/s" />
+                                    Text="{Binding EventRateText}" />
                                 <TextBlock
                                     Grid.Row="1"
                                     Grid.Column="0"
                                     Margin="0,0,8,2"
                                     Text="Processing:" />
                                 <TextBlock
-                                    x:Name="ProcessingTimeText"
                                     Grid.Row="1"
                                     Grid.Column="1"
                                     Margin="0,0,0,2"
-                                    Text="—" />
+                                    Text="{Binding ProcessingTimeText}" />
                                 <TextBlock
                                     Grid.Row="2"
                                     Grid.Column="0"
                                     Margin="0,0,8,0"
                                     Text="Render:" />
                                 <TextBlock
-                                    x:Name="RenderTimeText"
                                     Grid.Row="2"
                                     Grid.Column="1"
-                                    Text="—" />
+                                    Text="{Binding RenderTimeText}" />
                             </Grid>
                         </StackPanel>
                     </StackPanel>
@@ -142,6 +144,7 @@
 
                 <Border Grid.Row="1" Background="{StaticResource WorksheetSurfaceBrush}">
                     <Grid>
+                        <!--  x:Name preserved: code-behind hands this to the VM after Loaded  -->
                         <plots:OscilloscopePlotView x:Name="oscilloscopePlotView" />
                     </Grid>
                 </Border>
