@@ -132,21 +132,39 @@
         <Border Grid.Column="2" Background="{StaticResource WorksheetSurfaceBrush}">
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="1*" />
-                    <RowDefinition Height="13*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
+                <!--  Toolbar  -->
                 <Border
                     Grid.Row="0"
                     Margin="0,0,0,10"
                     Padding="10,6"
-                    Background="{StaticResource WorksheetHeaderBrush}" />
+                    Background="{StaticResource WorksheetHeaderBrush}">
+                    <StackPanel Orientation="Horizontal">
+                        <Button
+                            MinWidth="140"
+                            Margin="0,0,8,0"
+                            Command="{Binding AddOscilloscopeCommand}"
+                            Content="Add Oscilloscope" />
+                    </StackPanel>
+                </Border>
 
+                <!--  Worksheet body — dynamic plots  -->
                 <Border Grid.Row="1" Background="{StaticResource WorksheetSurfaceBrush}">
-                    <Grid>
-                        <!--  x:Name preserved: code-behind hands this to the VM after Loaded  -->
-                        <plots:OscilloscopePlotView x:Name="oscilloscopePlotView" />
-                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Plots}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="2" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <plots:OscilloscopePlotView />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </Border>
             </Grid>
         </Border>

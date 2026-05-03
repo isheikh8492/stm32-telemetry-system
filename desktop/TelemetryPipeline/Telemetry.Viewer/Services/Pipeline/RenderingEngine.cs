@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Telemetry.Viewer.Models;
+using Telemetry.Viewer.Models.Worksheet;
 
 namespace Telemetry.Viewer.Services.Pipeline;
 
@@ -26,7 +27,7 @@ public sealed class RenderingEngine : PollingEngine
         _store = store;
     }
 
-    public void Register(Guid plotId, IRenderTarget target)
+    public void Register(Guid plotId, IPlotView target)
     {
         lock (_targetsLock)
             _targets[plotId] = new RenderTargetEntry(plotId, target);
@@ -104,7 +105,7 @@ public sealed class RenderingEngine : PollingEngine
             foreach (var item in pending)
             {
                 var startTicks = Stopwatch.GetTimestamp();
-                item.Entry.Target.Render(item.Data);
+                item.Entry.Target.RenderDynamicLayer(item.Data);
                 var elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
                 RecordRenderTime(item.Data.GetType(), elapsedMs);
 
@@ -138,10 +139,10 @@ public sealed class RenderingEngine : PollingEngine
     private sealed class RenderTargetEntry
     {
         public Guid PlotId { get; }
-        public IRenderTarget Target { get; }
+        public IPlotView Target { get; }
         public ProcessedData? LastRenderedData;   // mutated on UI thread only
 
-        public RenderTargetEntry(Guid plotId, IRenderTarget target)
+        public RenderTargetEntry(Guid plotId, IPlotView target)
         {
             PlotId = plotId;
             Target = target;

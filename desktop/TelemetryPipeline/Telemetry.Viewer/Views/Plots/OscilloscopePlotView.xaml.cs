@@ -3,14 +3,18 @@ using System.Windows.Controls;
 using ScottPlot.DataSources;
 using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Models.Plots;
+using Telemetry.Viewer.Models.Worksheet;
 using Telemetry.Viewer.Services.ContextMenu;
-using Telemetry.Viewer.Services.Pipeline;
+using Telemetry.Viewer.ViewModels;
 
 namespace Telemetry.Viewer.Views.Plots
 {
-    public partial class OscilloscopePlotView : UserControl, IRenderTarget, IContextMenuTarget
+    // The View IS the IPlotView — Settings comes from the DataContext bound by
+    // the ItemsControl DataTemplate (each item is a PlotSettings record).
+    public partial class OscilloscopePlotView : UserControl, IPlotView, IContextMenuTarget
     {
         private ScottPlot.Plottables.Signal? _eventSignal;
+        private bool _initialized;
 
         public OscilloscopePlotView()
         {
@@ -18,11 +22,29 @@ namespace Telemetry.Viewer.Views.Plots
             Loaded += OscilloscopePlotView_Loaded;
         }
 
+        public Guid Id => Settings.PlotId;
+
+        // 'new' because FrameworkElement.Name (the XAML x:Name) is unrelated
+        // to the IPlotView display name we want here.
+        public new string Name => Settings switch
+        {
+            OscilloscopeSettings o => $"Oscilloscope (ch {o.ChannelId})",
+            HistogramSettings    h => $"Histogram (ch {h.ChannelId})",
+            _                      => "Plot"
+        };
+
+        public PlotSettings Settings => (PlotSettings)DataContext;
+
         private void OscilloscopePlotView_Loaded(object sender, RoutedEventArgs e)
         {
+            if (DataContext is not PlotSettings)
+                return;
+
             try
             {
-                InitializePlot();
+                var window = Window.GetWindow(this);
+                if (window?.DataContext is MainWindowViewModel vm)
+                    vm.NotifyPlotViewLoaded(this);
             }
             catch (Exception ex)
             {
@@ -30,8 +52,11 @@ namespace Telemetry.Viewer.Views.Plots
             }
         }
 
-        private void InitializePlot()
+        public void InitializeStaticLayer()
         {
+            if (_initialized)
+                return;
+
             double[] initialSamples = [0d];
 
             oscilloscopePlot.Plot.Clear();
@@ -44,15 +69,15 @@ namespace Telemetry.Viewer.Views.Plots
             oscilloscopePlot.Plot.YLabel("ADC");
             oscilloscopePlot.Plot.Axes.SetLimits(left: 0, right: 32, bottom: 0, top: 5000);
             oscilloscopePlot.Refresh();
+
+            _initialized = true;
         }
 
-        // RenderingEngine guarantees this is invoked on the UI thread.
-        public void Render(ProcessedData data)
+        public void RenderDynamicLayer(ProcessedData data)
         {
             if (data is not OscilloscopeFrame frame)
                 return;
 
-            // Manual ushort -> double copy avoids LINQ iterator allocation in the hot path.
             var samples = frame.Samples;
             var values = new double[samples.Count];
             for (int i = 0; i < samples.Count; i++)
@@ -74,7 +99,6 @@ namespace Telemetry.Viewer.Views.Plots
 
         public void AttachContextMenu(Func<IReadOnlyList<ContextMenuEntry>> entryFactory)
         {
-            // Disable ScottPlot's default right-click menu so ours wins.
             oscilloscopePlot.Menu = null;
 
             var menu = new System.Windows.Controls.ContextMenu();

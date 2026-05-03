@@ -1,4 +1,5 @@
 using Telemetry.Viewer.Models;
+using Telemetry.Viewer.Models.Worksheet;
 using Telemetry.Viewer.Services.ContextMenu;
 using Telemetry.Viewer.Services.DataSources;
 
@@ -36,29 +37,33 @@ public sealed class ViewportSession : IDisposable
 
     public DataStore Store => _store;
 
-    public void Register(PlotSettings settings, IRenderTarget target)
-    {
-        _store.UpsertSettings(settings);
-        _rendering.Register(settings.PlotId, target);
+    // ---- SettingsSink ----
+    // The VM calls these when the worksheet changes so ProcessingEngine and
+    // RenderingEngine stay in sync with what's actually on screen.
 
-        if (_menuProvider is not null && target is IContextMenuTarget menuTarget)
+    public void AddPlot(IPlotView plotView)
+    {
+        _store.UpsertSettings(plotView.Settings);
+        plotView.InitializeStaticLayer();
+        _rendering.Register(plotView.Settings.PlotId, plotView);
+
+        if (_menuProvider is not null && plotView is IContextMenuTarget menuTarget)
         {
-            // Re-query store + provider on every menu open so entries reflect current settings.
             menuTarget.AttachContextMenu(() =>
             {
-                var current = _store.GetSettings(settings.PlotId) ?? settings;
+                var current = _store.GetSettings(plotView.Settings.PlotId) ?? plotView.Settings;
                 return _menuProvider.GetMenuFor(current);
             });
         }
     }
 
-    public void UpdateSettings(PlotSettings settings)
+    public void UpdatePlotSettings(PlotSettings settings)
     {
         _store.UpsertSettings(settings);
-        // ProcessingEngine sees a different fingerprint next tick -> reprocesses this plot.
+        // ProcessingEngine sees a different fingerprint next tick -> reprocesses.
     }
 
-    public void Unregister(Guid plotId)
+    public void RemovePlot(Guid plotId)
     {
         _store.RemovePlot(plotId);
         _rendering.Unregister(plotId);

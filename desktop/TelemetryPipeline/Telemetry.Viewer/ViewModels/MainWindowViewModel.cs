@@ -1,18 +1,18 @@
+using System.Collections.ObjectModel;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 using Telemetry.IO;
 using Telemetry.Viewer.Common;
+using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Models.Plots;
+using Telemetry.Viewer.Models.Worksheet;
 using Telemetry.Viewer.Services.ContextMenu;
 using Telemetry.Viewer.Services.Pipeline;
 using Telemetry.Viewer.Views.Dialogs;
 
 namespace Telemetry.Viewer.ViewModels;
 
-// MVVM ViewModel for MainWindow. Exposes observable state + commands that the
-// View binds to. Pipeline construction is delegated to IPipelineFactory; the VM
-// just decides when to create / dispose sessions.
 public sealed class MainWindowViewModel : ObservableObject, IDisposable
 {
     private static readonly TimeSpan StatsRefreshInterval = TimeSpan.FromSeconds(1);
@@ -20,16 +20,17 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         { 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600, 2000000 };
 
     private readonly IPipelineFactory _pipelineFactory;
+    private readonly PlotContextMenuProvider _menuProvider;
+
+    // PlotId -> live IPlotView (the UserControl). Populated by views on Loaded;
+    // used by Connect() to (re)register every loaded plot with the new session.
+    private readonly Dictionary<Guid, IPlotView> _loadedViews = new();
 
     private IPipelineSession? _session;
     private DispatcherTimer? _statsTimer;
     private long _lastTotalAppended;
     private DateTime _lastStatsSampleTime;
-
-    // Set by the View after Loaded so the VM can register the plot view with
-    // the viewport. Lifetime matches the View; not injected via DI because
-    // it's a UI element.
-    private Telemetry.Viewer.Services.Pipeline.IRenderTarget? _oscilloscopePlot;
+    private int _nextOscilloscopeChannel;
 
     public MainWindowViewModel(IPipelineFactory pipelineFactory)
     {
@@ -38,13 +39,20 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         SupportedBaudRates = DefaultBaudRates;
         _selectedBaudRate = SerialReader.DefaultBaudRate;
 
+        _menuProvider = new PlotContextMenuProvider();
+        _menuProvider.Register<OscilloscopeSettings>(s => new[]
+        {
+            new ContextMenuEntry("Properties...", () => ShowOscilloscopeProperties(s))
+        });
+
         ToggleConnectionCommand = new RelayCommand(ToggleConnection, CanToggleConnection);
         RefreshPortsCommand = new RelayCommand(LoadAvailablePorts);
+        AddOscilloscopeCommand = new RelayCommand(AddOscilloscope);
 
         LoadAvailablePorts();
     }
 
-    // ---- Bindable state ----
+    // ---- Bindable connection state ----
 
     public IReadOnlyList<int> SupportedBaudRates { get; }
 
@@ -116,25 +124,35 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         private set => SetProperty(ref _renderTimeText, value);
     }
 
+    // ---- Worksheet ----
+
+    // Source-of-truth for what's on the worksheet. PlotSettings records are
+    // immutable; "edit" means replacing the record at its index (DataContext
+    // on the bound view refreshes automatically).
+    public ObservableCollection<PlotSettings> Plots { get; } = new();
+
     // ---- Commands ----
 
     public RelayCommand ToggleConnectionCommand { get; }
     public RelayCommand RefreshPortsCommand { get; }
+    public RelayCommand AddOscilloscopeCommand { get; }
 
     // ---- View handshake ----
 
-    // The View (MainWindow) calls this after Loaded so the VM can register the
-    // OscilloscopePlotView as a render target whenever a session starts.
-    public void AttachOscilloscopePlot(Telemetry.Viewer.Services.Pipeline.IRenderTarget renderTarget)
+    // The plot UserControl calls this on Loaded once its DataContext is a
+    // PlotSettings record. We stash it for re-registration on Connect, and
+    // register immediately if a session is already running.
+    public void NotifyPlotViewLoaded(IPlotView view)
     {
-        _oscilloscopePlot = renderTarget;
+        _loadedViews[view.Id] = view;
+        _session?.Viewport.AddPlot(view);
     }
 
     // ---- Internals ----
 
     private bool CanToggleConnection()
     {
-        if (IsConnected) return true;       // Disconnect always allowed
+        if (IsConnected) return true;
         return !string.IsNullOrWhiteSpace(SelectedPort) && SelectedBaudRate > 0;
     }
 
@@ -159,25 +177,14 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
         try
         {
-            var menuProvider = new PlotContextMenuProvider();
-            menuProvider.Register<OscilloscopeSettings>(s => new[]
-            {
-                new ContextMenuEntry("Properties...", () => ShowOscilloscopeProperties(s))
-            });
-
             var ui = SynchronizationContext.Current
                 ?? throw new InvalidOperationException("UI SynchronizationContext is null.");
 
-            _session = _pipelineFactory.Create(SelectedPort!, SelectedBaudRate, ui, menuProvider);
+            _session = _pipelineFactory.Create(SelectedPort!, SelectedBaudRate, ui, _menuProvider);
             _session.Reader.ErrorOccurred += OnSerialError;
 
-            if (_oscilloscopePlot is not null)
-            {
-                var oscilloscopeId = Guid.NewGuid();
-                _session.Viewport.Register(
-                    new OscilloscopeSettings(oscilloscopeId, ChannelId: 0),
-                    _oscilloscopePlot);
-            }
+            foreach (var view in _loadedViews.Values)
+                _session.Viewport.AddPlot(view);
 
             _session.Start();
             IsConnected = true;
@@ -217,11 +224,20 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         RenderTimeText = "—";
     }
 
+    private void AddOscilloscope()
+    {
+        var settings = new OscilloscopeSettings(
+            PlotId: Guid.NewGuid(),
+            ChannelId: _nextOscilloscopeChannel);
+        _nextOscilloscopeChannel = (_nextOscilloscopeChannel + 1) % 60;
+
+        Plots.Add(settings);
+    }
+
     private void StatsTimer_Tick(object? sender, EventArgs e)
     {
         if (_session is null) return;
 
-        // Event rate from RingBuffer.TotalAppended delta over wall-clock seconds.
         var now = DateTime.UtcNow;
         var elapsedSec = (now - _lastStatsSampleTime).TotalSeconds;
         var currentTotal = _session.Buffer.TotalAppended;
@@ -243,7 +259,6 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     private void OnSerialError(string message)
     {
-        // Reader fires this on its worker thread — marshal to UI thread for the dialog.
         Application.Current.Dispatcher.Invoke(() =>
             MessageBox.Show(message, "Serial Reader Error", MessageBoxButton.OK, MessageBoxImage.Error));
     }
@@ -254,10 +269,20 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         {
             Owner = Application.Current.MainWindow
         };
-        if (dialog.ShowDialog() == true && _session is not null)
+        if (dialog.ShowDialog() != true)
+            return;
+
+        // Records are immutable: replace the item at its index so the bound
+        // view's DataContext refreshes to the new settings.
+        var idx = -1;
+        for (int i = 0; i < Plots.Count; i++)
         {
-            _session.Viewport.UpdateSettings(dialog.UpdatedSettings);
+            if (Plots[i].PlotId == settings.PlotId) { idx = i; break; }
         }
+        if (idx >= 0)
+            Plots[idx] = dialog.UpdatedSettings;
+
+        _session?.Viewport.UpdatePlotSettings(dialog.UpdatedSettings);
     }
 
     public void Dispose() => Disconnect();
