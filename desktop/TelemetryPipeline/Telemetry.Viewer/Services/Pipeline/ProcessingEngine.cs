@@ -9,7 +9,8 @@ public sealed class ProcessingEngine : PollingEngine
 {
     private readonly IDataSource _source;
     private readonly DataStore _store;
-    private readonly Dictionary<Guid, (PlotSettings settings, uint eventId)> _fingerprints = new();
+    // (settings.Version, eventId) — bumped whenever settings mutate or a new event arrives.
+    private readonly Dictionary<Guid, (uint settingsVersion, uint eventId)> _fingerprints = new();
 
     private readonly object _metricsLock = new();
     private readonly Dictionary<Type, (double totalMs, long count)> _computeMetrics = new();
@@ -34,7 +35,7 @@ public sealed class ProcessingEngine : PollingEngine
         {
             activeIds.Add(settings.PlotId);
 
-            var fingerprint = (settings, id.Value);
+            var fingerprint = (settings.Version, id.Value);
             if (_fingerprints.TryGetValue(settings.PlotId, out var prev) && prev == fingerprint)
                 continue;
 

@@ -47,20 +47,14 @@ public sealed class ViewportSession : IDisposable
         plotView.InitializeStaticLayer();
         _rendering.Register(plotView.Settings.PlotId, plotView);
 
-        if (_menuProvider is not null && plotView is IContextMenuTarget menuTarget)
+        if (_menuProvider is not null)
         {
-            menuTarget.AttachContextMenu(() =>
+            plotView.AttachContextMenu(() =>
             {
                 var current = _store.GetSettings(plotView.Settings.PlotId) ?? plotView.Settings;
                 return _menuProvider.GetMenuFor(current);
             });
         }
-    }
-
-    public void UpdatePlotSettings(PlotSettings settings)
-    {
-        _store.UpsertSettings(settings);
-        // ProcessingEngine sees a different fingerprint next tick -> reprocesses.
     }
 
     public void RemovePlot(Guid plotId)

@@ -1,10 +1,8 @@
-using System.Collections.ObjectModel;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 using Telemetry.IO;
 using Telemetry.Viewer.Common;
-using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Models.Plots;
 using Telemetry.Viewer.Models.Worksheet;
 using Telemetry.Viewer.Services.ContextMenu;
@@ -22,15 +20,10 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IPipelineFactory _pipelineFactory;
     private readonly PlotContextMenuProvider _menuProvider;
 
-    // PlotId -> live IPlotView (the UserControl). Populated by views on Loaded;
-    // used by Connect() to (re)register every loaded plot with the new session.
-    private readonly Dictionary<Guid, IPlotView> _loadedViews = new();
-
     private IPipelineSession? _session;
     private DispatcherTimer? _statsTimer;
     private long _lastTotalAppended;
     private DateTime _lastStatsSampleTime;
-    private int _nextOscilloscopeChannel;
 
     public MainWindowViewModel(IPipelineFactory pipelineFactory)
     {
@@ -51,6 +44,10 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
         LoadAvailablePorts();
     }
+
+    // ---- Worksheet (app-lifetime; survives connect/disconnect) ----
+
+    public Worksheet Worksheet { get; } = new();
 
     // ---- Bindable connection state ----
 
@@ -124,29 +121,15 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         private set => SetProperty(ref _renderTimeText, value);
     }
 
-    // ---- Worksheet ----
-
-    // Source-of-truth for what's on the worksheet. PlotSettings records are
-    // immutable; "edit" means replacing the record at its index (DataContext
-    // on the bound view refreshes automatically).
-    public ObservableCollection<PlotSettings> Plots { get; } = new();
-
     // ---- Commands ----
 
     public RelayCommand ToggleConnectionCommand { get; }
     public RelayCommand RefreshPortsCommand { get; }
     public RelayCommand AddOscilloscopeCommand { get; }
 
-    // ---- View handshake ----
+    // ---- View handshake (forwarded to Worksheet) ----
 
-    // The plot UserControl calls this on Loaded once its DataContext is a
-    // PlotSettings record. We stash it for re-registration on Connect, and
-    // register immediately if a session is already running.
-    public void NotifyPlotViewLoaded(IPlotView view)
-    {
-        _loadedViews[view.Id] = view;
-        _session?.Viewport.AddPlot(view);
-    }
+    public void NotifyPlotViewLoaded(IPlotView view) => Worksheet.NotifyViewLoaded(view);
 
     // ---- Internals ----
 
@@ -183,9 +166,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             _session = _pipelineFactory.Create(SelectedPort!, SelectedBaudRate, ui, _menuProvider);
             _session.Reader.ErrorOccurred += OnSerialError;
 
-            foreach (var view in _loadedViews.Values)
-                _session.Viewport.AddPlot(view);
-
+            Worksheet.BindSession(_session.Viewport);
             _session.Start();
             IsConnected = true;
 
@@ -211,6 +192,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             _statsTimer = null;
         }
 
+        Worksheet.UnbindSession();
+
         if (_session is not null)
         {
             _session.Reader.ErrorOccurred -= OnSerialError;
@@ -226,12 +209,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     private void AddOscilloscope()
     {
-        var settings = new OscilloscopeSettings(
-            PlotId: Guid.NewGuid(),
-            ChannelId: _nextOscilloscopeChannel);
-        _nextOscilloscopeChannel = (_nextOscilloscopeChannel + 1) % 60;
-
-        Plots.Add(settings);
+        var settings = new OscilloscopeSettings(plotId: Guid.NewGuid(), channelId: 0);
+        Worksheet.AddPlot(settings);
     }
 
     private void StatsTimer_Tick(object? sender, EventArgs e)
@@ -263,26 +242,15 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             MessageBox.Show(message, "Serial Reader Error", MessageBoxButton.OK, MessageBoxImage.Error));
     }
 
+    // Mutating PlotSettings on OK bumps Version → ProcessingEngine reprocesses
+    // on its next tick. No collection-replace dance; no UpdateSettings call.
     private void ShowOscilloscopeProperties(OscilloscopeSettings settings)
     {
         var dialog = new OscilloscopePropertiesDialog(settings)
         {
             Owner = Application.Current.MainWindow
         };
-        if (dialog.ShowDialog() != true)
-            return;
-
-        // Records are immutable: replace the item at its index so the bound
-        // view's DataContext refreshes to the new settings.
-        var idx = -1;
-        for (int i = 0; i < Plots.Count; i++)
-        {
-            if (Plots[i].PlotId == settings.PlotId) { idx = i; break; }
-        }
-        if (idx >= 0)
-            Plots[idx] = dialog.UpdatedSettings;
-
-        _session?.Viewport.UpdatePlotSettings(dialog.UpdatedSettings);
+        dialog.ShowDialog();
     }
 
     public void Dispose() => Disconnect();

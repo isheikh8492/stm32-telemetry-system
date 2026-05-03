@@ -1,26 +1,19 @@
 using Telemetry.Viewer.Models;
+using Telemetry.Viewer.Services.ContextMenu;
 
 namespace Telemetry.Viewer.Models.Worksheet;
 
 // Anything that can live in the worksheet (plots, in the future possibly
-// non-plot widgets like text panels, status indicators, etc.). Two members
-// every worksheet item needs:
-//   Id   — stable identity (for selection, persistence, lookup)
-//   Name — display label (toolbar tabs, title bars, debug logs)
+// non-plot widgets like text panels, status indicators, etc.).
 public interface IWorksheetItem
 {
     Guid Id { get; }
     string Name { get; }
 }
 
-// A worksheet item that's a plot. Adds the PlotSettings the ProcessingEngine
-// reads from. Settings is settable because the Properties dialog mutates it
-// in place (the LivePlot raises PropertyChanged so bindings refresh).
-//
-// PlotId isn't on this interface — Id (from IWorksheetItem) returns the
-// settings' PlotId for plots, so a separate property would just be redundant.
-// PlotSettings records are immutable — to "edit" a plot, the VM replaces the
-// record in its worksheet collection and the View's DataContext refreshes.
+// A worksheet item that's a plot. Owns its PlotSettings (mutable INPC, the
+// pipeline picks up changes via Version), knows how to render itself in two
+// layers, and exposes a context-menu hook the worksheet/session can attach to.
 public interface IPlotView : IWorksheetItem
 {
     PlotSettings Settings { get; }
@@ -31,4 +24,8 @@ public interface IPlotView : IWorksheetItem
 
     // Called each render tick with the latest processed data.
     void RenderDynamicLayer(ProcessedData data);
+
+    // Factory is invoked each time the menu opens so it always reflects the
+    // latest PlotSettings.
+    void AttachContextMenu(Func<IReadOnlyList<ContextMenuEntry>> entryFactory);
 }

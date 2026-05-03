@@ -7,22 +7,24 @@ namespace Telemetry.Viewer.Views.Dialogs
     {
         private const int MaxChannelCount = 60;
 
-        public OscilloscopeSettings UpdatedSettings { get; private set; }
+        private readonly OscilloscopeSettings _settings;
 
-        public OscilloscopePropertiesDialog(OscilloscopeSettings current)
+        public OscilloscopePropertiesDialog(OscilloscopeSettings settings)
         {
             InitializeComponent();
-            UpdatedSettings = current;
+            _settings = settings;
 
             ChannelIdComboBox.ItemsSource = Enumerable.Range(0, MaxChannelCount).ToArray();
-            ChannelIdComboBox.SelectedItem = current.ChannelId;
+            ChannelIdComboBox.SelectedItem = settings.ChannelId;
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
             if (ChannelIdComboBox.SelectedItem is int channelId)
             {
-                UpdatedSettings = UpdatedSettings with { ChannelId = channelId };
+                // Mutates the live settings instance — bumps Version, fires
+                // PropertyChanged, and ProcessingEngine reprocesses next tick.
+                _settings.ChannelId = channelId;
                 DialogResult = true;
             }
         }
