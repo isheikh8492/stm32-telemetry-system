@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Telemetry.Core\Telemetry.Core.csproj" />
+    <ProjectReference Include="..\Telemetry.IO\Telemetry.IO.csproj" />
   </ItemGroup>
 
 </Project>

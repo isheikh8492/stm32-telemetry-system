@@ -1,3 +1,3 @@
-namespace Telemetry.Engine;
+namespace TelemetryViewer;
 
 public abstract record PlotSettings(Guid PlotId);

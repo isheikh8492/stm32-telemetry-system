@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace Telemetry.Engine;
+namespace TelemetryViewer;
 
 public sealed class RenderingEngine : PollingEngine
 {

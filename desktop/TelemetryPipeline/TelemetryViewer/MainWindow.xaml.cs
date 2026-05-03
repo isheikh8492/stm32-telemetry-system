@@ -110,10 +110,13 @@ namespace TelemetryViewer
                 new ContextMenuEntry("Properties...", () => ShowOscilloscopeProperties(settings))
             });
 
-            // 4. Viewport session — owns processing + rendering engines
+            // 4. Viewport session — owns processing + rendering engines.
+            //    Wrap the RingBuffer in a viewer-side IDataSource adapter so the
+            //    engines see a stable read-side contract, not a buffer impl.
             var uiContext = SynchronizationContext.Current
                 ?? throw new InvalidOperationException("UI SynchronizationContext is null.");
-            _viewport = new ViewportSession(_buffer, uiContext, contextMenuProvider: menuProvider);
+            var dataSource = new RingBufferDataSource(_buffer);
+            _viewport = new ViewportSession(dataSource, uiContext, contextMenuProvider: menuProvider);
 
             // 5. Register the oscilloscope plot — channel 0 of the multi-channel event
             var oscilloscopeId = Guid.NewGuid();

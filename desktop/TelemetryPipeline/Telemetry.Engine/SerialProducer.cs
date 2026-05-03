@@ -1,9 +1,9 @@
 using System.Threading.Channels;
 using Telemetry.Core.Models;
-using Telemetry.Engine;
+using Telemetry.IO;
 using ChannelFactory = System.Threading.Channels.Channel;
 
-namespace Telemetry.IO;
+namespace Telemetry.Engine;
 
 public sealed class SerialProducer : IProducer, IDisposable
 {

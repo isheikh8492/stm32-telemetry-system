@@ -12,7 +12,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Telemetry.Core\Telemetry.Core.csproj" />
-    <ProjectReference Include="..\Telemetry.Engine\Telemetry.Engine.csproj" />
   </ItemGroup>
 
 </Project>

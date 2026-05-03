@@ -1,5 +1,4 @@
 using System.Windows;
-using Telemetry.Engine;
 
 namespace TelemetryViewer.Views.Dialogs
 {

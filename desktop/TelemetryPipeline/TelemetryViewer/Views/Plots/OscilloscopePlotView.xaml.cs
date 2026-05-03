@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using ScottPlot.DataSources;
-using Telemetry.Engine;
 
 namespace TelemetryViewer.Views.Plots
 {

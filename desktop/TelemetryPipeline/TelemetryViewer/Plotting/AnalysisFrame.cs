@@ -1,4 +1,4 @@
-namespace Telemetry.Engine;
+namespace TelemetryViewer;
 
 // Across-events analysis base. The frame represents the CURRENT state of
 // an accumulator that absorbs events over time; EventsAccumulated advances

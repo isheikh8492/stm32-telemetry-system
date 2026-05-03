@@ -1,4 +1,4 @@
-namespace Telemetry.Engine;
+namespace TelemetryViewer;
 
 public sealed class DataStore
 {

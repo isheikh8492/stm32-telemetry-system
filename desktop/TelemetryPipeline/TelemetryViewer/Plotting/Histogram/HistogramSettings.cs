@@ -1,4 +1,4 @@
-namespace Telemetry.Engine;
+namespace TelemetryViewer;
 
 // 1D histogram of a single channel's parameter, accumulated across events.
 //   X axis = bins of the chosen ParamType in [MinRange, MaxRange]

@@ -1,4 +1,4 @@
-namespace Telemetry.Engine;
+namespace TelemetryViewer;
 
 // Type-dispatched provider: callers register a builder per concrete PlotSettings type.
 public sealed class PlotContextMenuProvider : IContextMenuProvider

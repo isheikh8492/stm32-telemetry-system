@@ -1,4 +1,4 @@
-namespace Telemetry.Engine;
+namespace TelemetryViewer;
 
 // One bin of a 1D histogram. Self-describing: contains its own range and count
 // so the renderer doesn't need to consult HistogramSettings to interpret the data.
