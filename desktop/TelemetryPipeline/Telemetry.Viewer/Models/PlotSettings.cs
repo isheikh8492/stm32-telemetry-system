@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using Telemetry.Viewer.Common;
+using Telemetry.Viewer.Models.Plots;
 
 namespace Telemetry.Viewer.Models;
 
@@ -14,6 +15,10 @@ public abstract class PlotSettings : ObservableObject
     // fingerprints on (PlotId, Version, EventId) to detect when this plot
     // needs reprocessing.
     public uint Version { get; private set; }
+
+    // Stable plot-kind identifier. Drives processing dispatch + (future)
+    // serialization. Each subclass returns a constant.
+    public abstract PlotType Type { get; }
 
     // Human-readable label for tabs / tooltips / debug. Subclasses compute
     // this from their own properties.

@@ -91,11 +91,11 @@ public sealed class ProcessingEngine : PollingEngine
     // for "latest event only" plots, Snapshot (full copy) for plots that need history.
     private static ProcessedData? ProcessFor(PlotSettings settings, IDataSource source)
     {
-        return settings switch
+        return settings.Type switch
         {
-            OscilloscopeSettings osc => ProcessOscilloscope(source, osc),
-            // future: HistogramSettings hs   => ProcessHistogram(source, hs),
-            _                       => null
+            PlotType.Oscilloscope => ProcessOscilloscope(source, (OscilloscopeSettings)settings),
+            PlotType.Histogram    => ProcessHistogram(source,    (HistogramSettings)settings),
+            _                     => null
         };
     }
 
@@ -108,5 +108,51 @@ public sealed class ProcessingEngine : PollingEngine
             return null;
         var channel = latest.Channels[settings.ChannelId];
         return new OscilloscopeFrame(latest.EventId, channel.Samples);
+    }
+
+    // V1: stateless trailing-window histogram. Each tick walks the ring-buffer
+    // snapshot and rebuilds bin counts. Acceptable while N×ticks/sec is small;
+    // when it isn't, swap to per-plot accumulator state keyed by settings.Version.
+    private static ProcessedData? ProcessHistogram(IDataSource source, HistogramSettings settings)
+    {
+        if (settings.BinCount <= 0 || settings.MaxRange <= settings.MinRange)
+            return null;
+
+        var snapshot = source.Snapshot();
+        if (snapshot.Count == 0)
+            return null;
+
+        var counts = new long[settings.BinCount];
+        long total = 0;
+
+        foreach (var ev in snapshot)
+        {
+            if (settings.ChannelId < 0 || settings.ChannelId >= ev.Channels.Count)
+                continue;
+            var p = ev.Channels[settings.ChannelId].Parameters;
+            double value = settings.Param switch
+            {
+                ParamType.Area       => p.Area,
+                ParamType.PeakHeight => p.PeakHeight,
+                ParamType.PeakWidth  => p.PeakWidth,
+                ParamType.Baseline   => p.Baseline,
+                _                    => double.NaN,
+            };
+            if (double.IsNaN(value)) continue;
+
+            var idx = settings.GetBinIndex(value);
+            if (idx is null) continue;
+
+            counts[idx.Value]++;
+            total++;
+        }
+
+        var bins = new HistogramBin[settings.BinCount];
+        for (int i = 0; i < settings.BinCount; i++)
+        {
+            var (start, end) = settings.GetBinRange(i);
+            bins[i] = new HistogramBin(start, end, counts[i]);
+        }
+        return new HistogramFrame(total, bins);
     }
 }

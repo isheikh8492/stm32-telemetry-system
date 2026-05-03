@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Telemetry.Viewer.Common;
 using Telemetry.Viewer.Models;
+using Telemetry.Viewer.Models.Plots;
 using Telemetry.Viewer.Services.ContextMenu;
 using Telemetry.Viewer.Services.Pipeline;
 using Telemetry.Viewer.Views.Plots;
@@ -27,9 +28,9 @@ public sealed class Worksheet
     public ObservableCollection<PlotTypeOption> PlotTypes { get; } = new();
 
     private readonly Dictionary<Guid, PlotItem> _plots = new();
-    private readonly Dictionary<Type, Func<PlotSettings, IReadOnlyList<ContextMenuProvider>>> _menus = new();
-    private readonly Dictionary<Type, Func<PlotItem>> _itemFactories = new();
-    private readonly Dictionary<Type, Size> _defaultSizes = new();
+    private readonly Dictionary<PlotType, Func<PlotSettings, IReadOnlyList<ContextMenuProvider>>> _menus = new();
+    private readonly Dictionary<PlotType, Func<PlotItem>> _itemFactories = new();
+    private readonly Dictionary<PlotType, Size> _defaultSizes = new();
 
     private Canvas? _canvas;
     private ViewportSession? _session;
@@ -42,12 +43,13 @@ public sealed class Worksheet
     public Worksheet()
     {
         OscilloscopePlot.Register(this);
-        // future: HistogramPlot.Register(this);
+        HistogramPlot.Register(this);
     }
 
     // ---- Plot-type registration (called from each <X>Plot.Register) ----
 
     public void RegisterPlotType<TSettings, TItem>(
+        PlotType type,
         string label,
         Size defaultSize,
         Func<TSettings> createSettings,
@@ -56,9 +58,9 @@ public sealed class Worksheet
         where TSettings : PlotSettings
         where TItem : PlotItem
     {
-        _menus[typeof(TSettings)] = s => menuBuilder((TSettings)s);
-        _itemFactories[typeof(TSettings)] = () => createItem();
-        _defaultSizes[typeof(TSettings)] = defaultSize;
+        _menus[type] = s => menuBuilder((TSettings)s);
+        _itemFactories[type] = () => createItem();
+        _defaultSizes[type] = defaultSize;
 
         PlotTypes.Add(new PlotTypeOption(
             Label: label,
@@ -66,7 +68,7 @@ public sealed class Worksheet
     }
 
     private IReadOnlyList<ContextMenuProvider> GetMenuFor(PlotSettings settings)
-        => _menus.TryGetValue(settings.GetType(), out var b) ? b(settings) : Array.Empty<ContextMenuProvider>();
+        => _menus.TryGetValue(settings.Type, out var b) ? b(settings) : Array.Empty<ContextMenuProvider>();
 
     // ---- Canvas attachment (called by WorksheetGrid on Loaded) ----
 
@@ -129,12 +131,12 @@ public sealed class Worksheet
     private void AddPlotAt(PlotSettings settings, Point worksheetPoint)
     {
         if (_canvas is null) return;
-        if (!_itemFactories.TryGetValue(settings.GetType(), out var itemFactory)) return;
+        if (!_itemFactories.TryGetValue(settings.Type, out var itemFactory)) return;
 
         var item = itemFactory();
         item.DataContext = settings;
 
-        var size = _defaultSizes.TryGetValue(settings.GetType(), out var ds) ? ds : new Size(400, 200);
+        var size = _defaultSizes.TryGetValue(settings.Type, out var ds) ? ds : new Size(400, 200);
         item.Width = size.Width;
         item.Height = size.Height;
 

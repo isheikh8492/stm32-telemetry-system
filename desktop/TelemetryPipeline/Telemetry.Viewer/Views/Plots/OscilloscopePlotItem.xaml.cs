@@ -115,6 +115,6 @@ namespace Telemetry.Viewer.Views.Plots
         }
 
         public override void AttachContextMenu(Func<IReadOnlyList<ContextMenuProvider>> contextMenuProvider)
-            => PlotContextMenuFactory.Attach(oscilloscopePlot, contextMenuProvider);
+            => PlotContextMenuFactory.Attach(oscilloscopePlot, Container!.DragLayer, contextMenuProvider);
     }
 }

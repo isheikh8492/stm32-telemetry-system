@@ -14,6 +14,7 @@ internal static class OscilloscopePlot
     public static void Register(Worksheet.Worksheet worksheet)
     {
         worksheet.RegisterPlotType<OscilloscopeSettings, OscilloscopePlotItem>(
+            type:           PlotType.Oscilloscope,
             label:          "Oscilloscope",
             defaultSize:    new Size(300, 200),
             createSettings: () => new OscilloscopeSettings(plotId: Guid.NewGuid(), channelId: 0),

@@ -19,5 +19,6 @@ public sealed class OscilloscopeSettings : PlotSettings
         }
     }
 
+    public override PlotType Type => PlotType.Oscilloscope;
     public override string DisplayName => $"Oscilloscope (ch {_channelId})";
 }
