@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Windows.Input;
+using Telemetry.Viewer.Common;
 using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Models.Worksheet;
 using Telemetry.Viewer.Services.ContextMenu;
@@ -7,18 +9,21 @@ using Telemetry.Viewer.Views.Plots;
 
 namespace Telemetry.Viewer.Views.Worksheet;
 
-// App-lifetime container for plots. Survives connect/disconnect cycles —
-// the active ViewportSession is bound on connect and unbound on disconnect,
-// but the plot list and any loaded views persist.
+public sealed record PlotTypeOption(string Label, ICommand AddCommand);
+
+// App-lifetime container for plots. Owns:
+//   * Plots collection bound by the worksheet ItemsControl
+//   * PlotTypes collection bound by the toolbar (one Add button per type)
+//   * Per-plot-type context menu builders (used on right-click)
+//   * The currently bound ViewportSession (set on Connect, cleared on Disconnect)
 //
-// Owns the per-plot-type context-menu wiring: each <X>Plot static class
-// registers its menu shape + dialog routing in the ctor below. Pipeline
-// session is purely about data flow and never sees menu plumbing.
-//
-// (Future home for grid layout / drag-and-drop / tab grouping.)
+// Each <X>Plot static class registers its label, settings factory, and menu
+// shape via RegisterPlotType — adding a new plot type touches Worksheet's
+// ctor and one new <X>Plot file, nothing else.
 public sealed class Worksheet
 {
     public ObservableCollection<PlotSettings> Plots { get; } = new();
+    public ObservableCollection<PlotTypeOption> PlotTypes { get; } = new();
 
     private readonly Dictionary<Guid, IPlotView> _loadedViews = new();
     private readonly Dictionary<Type, Func<PlotSettings, IReadOnlyList<ContextMenuProvider>>> _menus = new();
@@ -27,18 +32,21 @@ public sealed class Worksheet
 
     public Worksheet()
     {
-        // Plot types known to this app self-wire here. Adding a new plot
-        // type = one extra <X>Plot.Register(this) call.
         OscilloscopePlot.Register(this);
         // future: HistogramPlot.Register(this);
     }
 
     // ---- Plot-type registration (called from each <X>Plot.Register) ----
 
-    public void RegisterMenu<T>(Func<T, IReadOnlyList<ContextMenuProvider>> builder)
-        where T : PlotSettings
+    public void RegisterPlotType<T>(
+        string label,
+        Func<T> createSettings,
+        Func<T, IReadOnlyList<ContextMenuProvider>> menuBuilder) where T : PlotSettings
     {
-        _menus[typeof(T)] = settings => builder((T)settings);
+        _menus[typeof(T)] = settings => menuBuilder((T)settings);
+        PlotTypes.Add(new PlotTypeOption(
+            Label: label,
+            AddCommand: new RelayCommand(() => AddPlot(createSettings()))));
     }
 
     private IReadOnlyList<ContextMenuProvider> GetMenuFor(PlotSettings settings)
@@ -75,9 +83,7 @@ public sealed class Worksheet
     public void NotifyViewLoaded(IPlotView view)
     {
         _loadedViews[view.Id] = view;
-
         view.AttachContextMenu(() => GetMenuFor(view.Settings));
-
         _session?.AddPlot(view);
     }
 

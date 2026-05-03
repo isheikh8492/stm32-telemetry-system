@@ -34,7 +34,7 @@ namespace Telemetry.Viewer.Views.Plots
 
             var window = Window.GetWindow(this);
             if (window?.DataContext is MainWindowViewModel vm)
-                vm.NotifyPlotViewLoaded(this);
+                vm.Worksheet.NotifyViewLoaded(this);
         }
 
         // Settings-driven scaffolding: axes, labels, ranges, title. Idempotent —

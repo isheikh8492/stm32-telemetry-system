@@ -1,5 +1,4 @@
 using Telemetry.Engine;
-using Telemetry.IO;
 
 namespace Telemetry.Viewer.Services.Pipeline;
 
@@ -12,9 +11,13 @@ namespace Telemetry.Viewer.Services.Pipeline;
 // lifetime is shorter than the application's.
 public interface IPipelineSession : IDisposable
 {
-    SerialReader Reader { get; }
     RingBuffer Buffer { get; }
     ViewportSession Viewport { get; }
+
+    // Raised on the UI thread (the captured SynchronizationContext) when the
+    // serial reader reports an error. VMs subscribe directly without needing
+    // to marshal threads.
+    event Action<string>? ErrorOccurred;
 
     void Start();
     void Stop();

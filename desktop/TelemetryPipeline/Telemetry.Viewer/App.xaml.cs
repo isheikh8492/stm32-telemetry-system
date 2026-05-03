@@ -1,6 +1,8 @@
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Telemetry.IO;
+using Telemetry.Viewer.Services.Dialogs;
 using Telemetry.Viewer.Services.Pipeline;
 using Telemetry.Viewer.ViewModels;
 using Telemetry.Viewer.Views;
@@ -23,6 +25,8 @@ namespace Telemetry.Viewer
                 .ConfigureServices((_, services) =>
                 {
                     // ---- Services (singleton — app lifetime) ----
+                    services.AddSingleton<IPortDiscovery, SerialPortDiscovery>();
+                    services.AddSingleton<IDialogService, WpfDialogService>();
                     services.AddSingleton<IPipelineFactory, PipelineFactory>();
 
                     // ---- ViewModels (singleton — there's only one main window) ----

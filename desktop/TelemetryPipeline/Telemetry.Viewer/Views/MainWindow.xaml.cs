@@ -15,6 +15,7 @@ namespace Telemetry.Viewer.Views
         {
             InitializeComponent();
             DataContext = viewModel;
+            Loaded += (_, _) => viewModel.Initialize();
         }
     }
 }

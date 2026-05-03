@@ -12,6 +12,7 @@ public sealed class PipelineSession : IPipelineSession
     private readonly BufferConsumer _consumer;
     private readonly RingBuffer _buffer;
     private readonly ViewportSession _viewport;
+    private readonly SynchronizationContext _uiContext;
 
     private CancellationTokenSource? _consumerCts;
     private Task? _consumerTask;
@@ -22,18 +23,23 @@ public sealed class PipelineSession : IPipelineSession
         SerialProducer producer,
         BufferConsumer consumer,
         RingBuffer buffer,
-        ViewportSession viewport)
+        ViewportSession viewport,
+        SynchronizationContext uiContext)
     {
         _reader = reader;
         _producer = producer;
         _consumer = consumer;
         _buffer = buffer;
         _viewport = viewport;
+        _uiContext = uiContext;
+
+        _reader.ErrorOccurred += OnReaderError;
     }
 
-    public SerialReader Reader => _reader;
     public RingBuffer Buffer => _buffer;
     public ViewportSession Viewport => _viewport;
+
+    public event Action<string>? ErrorOccurred;
 
     public void Start()
     {
@@ -52,12 +58,20 @@ public sealed class PipelineSession : IPipelineSession
         _producer.Stop();
     }
 
+    // SerialReader fires this on a worker thread; we marshal to the UI thread
+    // so VM subscribers can update bindings or show dialogs without ceremony.
+    private void OnReaderError(string message)
+    {
+        _uiContext.Post(_ => ErrorOccurred?.Invoke(message), null);
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
 
-        // Stop pulls everything off the wire; Dispose tears down owned resources.
+        _reader.ErrorOccurred -= OnReaderError;
+
         _viewport.Dispose();
         _consumerCts?.Cancel();
         _producer.Dispose();

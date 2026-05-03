@@ -1,9 +1,7 @@
-using System.Threading;
-using System.Windows;
+using System.Windows.Input;
 using Telemetry.IO;
 using Telemetry.Viewer.Common;
-using Telemetry.Viewer.Models.Plots;
-using Telemetry.Viewer.Models.Worksheet;
+using Telemetry.Viewer.Services.Dialogs;
 using Telemetry.Viewer.Services.Pipeline;
 using Telemetry.Viewer.Views.Worksheet;
 
@@ -11,41 +9,46 @@ namespace Telemetry.Viewer.ViewModels;
 
 public sealed class MainWindowViewModel : ObservableObject, IDisposable
 {
-    private static readonly int[] DefaultBaudRates =
-        { 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600, 2000000 };
-
     private readonly IPipelineFactory _pipelineFactory;
+    private readonly IPortDiscovery _ports;
+    private readonly IDialogService _dialogs;
+
+    private readonly RelayCommand _toggleConnectionCommand;
 
     private IPipelineSession? _session;
 
-    public MainWindowViewModel(IPipelineFactory pipelineFactory)
+    public MainWindowViewModel(
+        IPipelineFactory pipelineFactory,
+        IPortDiscovery ports,
+        IDialogService dialogs)
     {
         _pipelineFactory = pipelineFactory;
+        _ports = ports;
+        _dialogs = dialogs;
 
-        SupportedBaudRates = DefaultBaudRates;
-        _selectedBaudRate = SerialReader.DefaultBaudRate;
+        SupportedBaudRates = ports.SupportedBaudRates;
+        _selectedBaudRate = ports.DefaultBaudRate;
 
-        ToggleConnectionCommand = new RelayCommand(ToggleConnection, CanToggleConnection);
+        _toggleConnectionCommand = new RelayCommand(ToggleConnection, CanToggleConnection);
+        ToggleConnectionCommand = _toggleConnectionCommand;
         RefreshPortsCommand = new RelayCommand(LoadAvailablePorts);
-        AddOscilloscopeCommand = new RelayCommand(AddOscilloscope);
-
-        LoadAvailablePorts();
     }
 
-    // ---- Worksheet (app-lifetime; survives connect/disconnect) ----
+    // Called once by MainWindow on Loaded. Keeps the ctor side-effect-free
+    // (no OS calls during construction → easier to test, faster to instantiate).
+    public void Initialize() => LoadAvailablePorts();
+
+    // ---- Child VMs (app-lifetime) ----
 
     public Worksheet Worksheet { get; } = new();
-
-    // ---- Pipeline stats (own VM; bound by sidebar's stats panel) ----
-
     public PipelineStatsViewModel Stats { get; } = new();
 
     // ---- Bindable connection state ----
 
     public IReadOnlyList<int> SupportedBaudRates { get; }
 
-    private string[] _availablePorts = Array.Empty<string>();
-    public string[] AvailablePorts
+    private IReadOnlyList<string> _availablePorts = Array.Empty<string>();
+    public IReadOnlyList<string> AvailablePorts
     {
         get => _availablePorts;
         private set => SetProperty(ref _availablePorts, value);
@@ -58,7 +61,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         set
         {
             if (SetProperty(ref _selectedPort, value))
-                ToggleConnectionCommand.RaiseCanExecuteChanged();
+                _toggleConnectionCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -69,7 +72,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         set
         {
             if (SetProperty(ref _selectedBaudRate, value))
-                ToggleConnectionCommand.RaiseCanExecuteChanged();
+                _toggleConnectionCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -82,24 +85,17 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _isConnected, value))
             {
                 OnPropertyChanged(nameof(IsDisconnected));
-                OnPropertyChanged(nameof(ConnectButtonText));
-                ToggleConnectionCommand.RaiseCanExecuteChanged();
+                _toggleConnectionCommand.RaiseCanExecuteChanged();
             }
         }
     }
 
     public bool IsDisconnected => !IsConnected;
-    public string ConnectButtonText => IsConnected ? "Disconnect" : "Connect";
 
-    // ---- Commands ----
+    // ---- Commands (public surface = ICommand; concrete kept private for RaiseCanExecuteChanged) ----
 
-    public RelayCommand ToggleConnectionCommand { get; }
-    public RelayCommand RefreshPortsCommand { get; }
-    public RelayCommand AddOscilloscopeCommand { get; }
-
-    // ---- View handshake (forwarded to Worksheet) ----
-
-    public void NotifyPlotViewLoaded(IPlotView view) => Worksheet.NotifyViewLoaded(view);
+    public ICommand ToggleConnectionCommand { get; }
+    public ICommand RefreshPortsCommand { get; }
 
     // ---- Internals ----
 
@@ -111,9 +107,9 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     private void LoadAvailablePorts()
     {
-        var ports = SerialReader.GetAvailablePorts();
+        var ports = _ports.GetAvailablePorts();
         AvailablePorts = ports;
-        if (ports.Length > 0 && string.IsNullOrEmpty(SelectedPort))
+        if (ports.Count > 0 && string.IsNullOrEmpty(SelectedPort))
             SelectedPort = ports[0];
     }
 
@@ -130,11 +126,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
         try
         {
-            var ui = SynchronizationContext.Current
-                ?? throw new InvalidOperationException("UI SynchronizationContext is null.");
-
-            _session = _pipelineFactory.Create(SelectedPort!, SelectedBaudRate, ui);
-            _session.Reader.ErrorOccurred += OnSerialError;
+            _session = _pipelineFactory.Create(SelectedPort!, SelectedBaudRate);
+            _session.ErrorOccurred += OnSessionError;
 
             Worksheet.BindSession(_session.Viewport);
             _session.Start();
@@ -143,7 +136,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Connection Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            _dialogs.ShowError(ex.Message, "Connection Error");
             Disconnect();
         }
     }
@@ -155,7 +148,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
         if (_session is not null)
         {
-            _session.Reader.ErrorOccurred -= OnSerialError;
+            _session.ErrorOccurred -= OnSessionError;
             _session.Dispose();
             _session = null;
         }
@@ -163,17 +156,14 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         IsConnected = false;
     }
 
-    private void AddOscilloscope()
-    {
-        var settings = new OscilloscopeSettings(plotId: Guid.NewGuid(), channelId: 0);
-        Worksheet.AddPlot(settings);
-    }
+    // PipelineSession marshals serial reader errors onto the UI thread, so
+    // we just show the dialog — no Dispatcher.Invoke needed.
+    private void OnSessionError(string message)
+        => _dialogs.ShowError(message, "Serial Reader Error");
 
-    private void OnSerialError(string message)
+    public void Dispose()
     {
-        Application.Current.Dispatcher.Invoke(() =>
-            MessageBox.Show(message, "Serial Reader Error", MessageBoxButton.OK, MessageBoxImage.Error));
+        Disconnect();
+        Stats.Dispose();
     }
-
-    public void Dispose() => Disconnect();
 }

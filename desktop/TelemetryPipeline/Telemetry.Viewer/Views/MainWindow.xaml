@@ -38,10 +38,18 @@
                                 ItemsSource="{Binding SupportedBaudRates}"
                                 SelectedItem="{Binding SelectedBaudRate, Mode=TwoWay}"
                                 Style="{StaticResource SidebarComboBoxStyle}" />
-                            <Button
-                                Command="{Binding ToggleConnectionCommand}"
-                                Content="{Binding ConnectButtonText}"
-                                Style="{StaticResource SidebarButtonStyle}" />
+                            <Button Command="{Binding ToggleConnectionCommand}">
+                                <Button.Style>
+                                    <Style BasedOn="{StaticResource SidebarButtonStyle}" TargetType="Button">
+                                        <Setter Property="Content" Value="Connect" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                                <Setter Property="Content" Value="Disconnect" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
                         </StackPanel>
                     </StackPanel>
 
@@ -136,13 +144,22 @@
                     Margin="0,0,0,10"
                     Padding="10,6"
                     Background="{StaticResource WorksheetHeaderBrush}">
-                    <StackPanel Orientation="Horizontal">
-                        <Button
-                            MinWidth="140"
-                            Margin="0,0,8,0"
-                            Command="{Binding AddOscilloscopeCommand}"
-                            Content="Add Oscilloscope" />
-                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding Worksheet.PlotTypes}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button
+                                    MinWidth="140"
+                                    Margin="0,0,8,0"
+                                    Command="{Binding AddCommand}"
+                                    Content="{Binding Label, StringFormat='Add {0}'}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </Border>
 
                 <!--  Worksheet body — dynamic plots  -->
