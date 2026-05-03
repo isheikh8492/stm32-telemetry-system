@@ -21,7 +21,7 @@ namespace Telemetry.Viewer.Views.Worksheet;
 internal sealed class ThumbManager
 {
     private const double MinSize = 50;
-    private const double Half = 4;
+    private const double Half = 3;
 
     private readonly PlotContainer _container;
     private readonly Func<double> _getSnapSize;
@@ -83,7 +83,7 @@ internal sealed class ThumbManager
         var border = new FrameworkElementFactory(typeof(Border));
         border.SetValue(Border.BackgroundProperty, Brushes.DarkOrange);
         var template = new ControlTemplate(typeof(Thumb)) { VisualTree = border };
-        return new Thumb { Width = 8, Height = 8, Cursor = cursor, Template = template };
+        return new Thumb { Width = 6, Height = 6, Cursor = cursor, Template = template };
     }
 
     private void WireThumb(Thumb thumb, Corner corner)
