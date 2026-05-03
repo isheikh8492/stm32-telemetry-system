@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Move-Item \"c:\\\\Users\\\\ishei\\\\source\\\\repos\\\\stm32-telemetry-system\\\\desktop\\\\TelemetryPipeline\\\\Telemetry.Viewer\\\\Models\\\\Plots\\\\HistogramBinCount.cs\" \"c:\\\\Users\\\\ishei\\\\source\\\\repos\\\\stm32-telemetry-system\\\\desktop\\\\TelemetryPipeline\\\\Telemetry.Viewer\\\\Models\\\\Plots\\\\BinCount.cs\")"
+    ]
+  }
+}

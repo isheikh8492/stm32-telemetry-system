@@ -55,19 +55,25 @@ namespace Telemetry.Viewer.Views.Plots
             histogramPlot.Plot.DataBackground.Color = ScottPlot.Colors.White;
             histogramPlot.Plot.Grid.IsVisible = false;
 
-            histogramPlot.Plot.Title($"{Hist.Param} histogram (ch {Hist.ChannelId})");
             histogramPlot.Plot.XLabel(Hist.Param.ToString());
             histogramPlot.Plot.YLabel("Count");
 
-            // X is bin-position space → use BuildBinTickGenerator (labels at
-            // data-equivalent positions per the chosen scale). Y is data
-            // space (counts), always linear → use BuildTickGenerator. Y range
-            // recomputed each Render based on max count.
+            // X is bin-position space → BuildBinTickGenerator (labels at
+            // data-equivalent positions per the chosen scale). Static.
+            // Y is dynamic (count grows with data) — install HistogramYAxisItem's
+            // 6-major tick generator ONCE; ScottPlot calls Regenerate when
+            // SetLimitsY moves the range, so labels (K / M / B) update while
+            // the tick layout stays fixed. Render() never touches ticks.
             var binCount = (int)Hist.BinCount;
             histogramPlot.Plot.Axes.Bottom.TickGenerator =
                 AxisFactory.For(Hist.Scale).BuildBinTickGenerator(Hist.MinRange, Hist.MaxRange, binCount);
+            histogramPlot.Plot.Axes.Left.TickGenerator =
+                HistogramYAxisItem.CreateTickGenerator();
 
             histogramPlot.Plot.Axes.SetLimitsX(0, binCount);
+            // Initialize Y to NiceMax's floor (1K) so an empty histogram
+            // shows a meaningful axis instead of ScottPlot's default [-10, 10].
+            histogramPlot.Plot.Axes.SetLimitsY(0, HistogramYAxisItem.NiceMax(0));
             histogramPlot.Refresh();
         }
 
@@ -99,14 +105,12 @@ namespace Telemetry.Viewer.Views.Plots
             }
             histogramPlot.Plot.Add.Bars(bars);
 
-            // X locked to bin-position space; Y anchored at 0 with 5% headroom.
-            // Linear count axis ticks are recomputed for the new range so labels
-            // (SI-prefixed: k, M, G) stay readable as the histogram grows.
-            var yMax = Math.Max(1, maxCount * 1.05);
+            // X locked to bin-position space; Y anchored at 0, max rounded
+            // up to a "nice" value so every tick lands on a clean number.
+            // Tick generator was installed in ApplySettings — labels follow
+            // the new range through ScottPlot's Regenerate hook.
             histogramPlot.Plot.Axes.SetLimitsX(0, (int)Hist.BinCount);
-            histogramPlot.Plot.Axes.SetLimitsY(0, yMax);
-            histogramPlot.Plot.Axes.Left.TickGenerator =
-                AxisFactory.Linear.BuildTickGenerator(0, yMax);
+            histogramPlot.Plot.Axes.SetLimitsY(0, HistogramYAxisItem.NiceMax(maxCount));
             histogramPlot.Refresh();
         }
 

@@ -16,13 +16,13 @@ public sealed class LinearAxisItem : AxisItem
         return (min + idx * width, min + (idx + 1) * width);
     }
 
-    // ~10 majors at 1/2/5×10ⁿ steps; 5 minors per major. SI-prefix labels.
+    // 3–6 majors at 1/2/5×10ⁿ steps, regardless of how "messy" min/max are.
+    // 5 minors per major. SI-prefix labels.
     public override Tick[] ComputeTicks(double min, double max)
     {
         if (max <= min) return Array.Empty<Tick>();
 
-        const int targetMajors = 10;
-        var step = NiceStep((max - min) / targetMajors);
+        var step = ChooseStep(max - min);
         var minorStep = step / 5;
 
         var ticks = new List<Tick>();
@@ -39,15 +39,32 @@ public sealed class LinearAxisItem : AxisItem
         return ticks.ToArray();
     }
 
-    // Round a step up to a "nice" 1/2/5 × 10ⁿ value.
-    private static double NiceStep(double raw)
+    // Pick a 1/2/5×10ⁿ step that produces between 3 and 6 majors across the
+    // range. Survives ugly min/max values (e.g. 37 → 8423) by sweeping nice
+    // steps around the order of magnitude of range/5.
+    private static readonly double[] _niceFractions = { 1, 2, 5 };
+    private static double ChooseStep(double range)
     {
-        if (raw <= 0) return 1;
-        var exp = Math.Floor(Math.Log10(raw));
-        var pow = Math.Pow(10, exp);
-        var frac = raw / pow;
-        var nice = frac < 1.5 ? 1 : frac < 3.5 ? 2 : frac < 7.5 ? 5 : 10;
-        return nice * pow;
+        const int minMajors = 3;
+        const int maxMajors = 6;
+
+        var exp = (int)Math.Floor(Math.Log10(range / 5));
+
+        // Sweep small → large; first step that yields a count in [3, 6] wins.
+        for (int e = exp - 1; e <= exp + 2; e++)
+        {
+            var pow = Math.Pow(10, e);
+            foreach (var f in _niceFractions)
+            {
+                var step = f * pow;
+                var count = (int)Math.Floor(range / step) + 1;
+                if (count >= minMajors && count <= maxMajors) return step;
+            }
+        }
+
+        // Fallback if the sweep finds nothing — give a sane step so the loop
+        // doesn't divide by zero downstream.
+        return Math.Pow(10, exp);
     }
 
     private static double NextMultiple(double from, double step)

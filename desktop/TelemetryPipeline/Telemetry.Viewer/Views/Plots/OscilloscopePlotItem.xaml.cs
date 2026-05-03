@@ -4,6 +4,7 @@ using ScottPlot.DataSources;
 using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Models.Plots;
 using Telemetry.Viewer.Services.ContextMenu;
+using Telemetry.Viewer.Views.Plots.Axes;
 using Telemetry.Viewer.Views.Worksheet;
 
 namespace Telemetry.Viewer.Views.Plots
@@ -74,16 +75,10 @@ namespace Telemetry.Viewer.Views.Plots
             // visual reference, the plot interior should stay clean.
             oscilloscopePlot.Plot.Grid.IsVisible = false;
 
-            // Pin tick spacing so the axis layout doesn't reflow with size.
-            // Y: majors every 1000 (with labels), minors every 200 (no labels).
-            var leftTicks = new List<ScottPlot.Tick>();
-            for (double v = 0; v <= 5000; v += 200)
-            {
-                bool isMajor = ((int)v) % 1000 == 0;
-                leftTicks.Add(new ScottPlot.Tick(v, isMajor ? v.ToString("N0") : "", isMajor));
-            }
-            oscilloscopePlot.Plot.Axes.Left.TickGenerator   = new ScottPlot.TickGenerators.NumericManual(leftTicks.ToArray());
-            oscilloscopePlot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericFixedInterval(4);
+            // Tick generators owned by OscilloscopeTickGenerator — keeps the
+            // ADC range / step constants out of this view.
+            oscilloscopePlot.Plot.Axes.Left.TickGenerator   = OscilloscopeTickGenerator.BuildY();
+            oscilloscopePlot.Plot.Axes.Bottom.TickGenerator = OscilloscopeTickGenerator.BuildX();
 
             oscilloscopePlot.Plot.XLabel("Window (s)");
             oscilloscopePlot.Plot.YLabel("ADC");
