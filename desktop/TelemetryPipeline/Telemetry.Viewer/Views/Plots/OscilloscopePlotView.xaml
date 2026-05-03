@@ -9,8 +9,6 @@
     d:DesignWidth="900"
     mc:Ignorable="d">
     <Grid>
-        <Border Style="{StaticResource PlotHostBorderStyle}">
-            <scottPlot:WpfPlot x:Name="oscilloscopePlot" />
-        </Border>
+        <scottPlot:WpfPlot x:Name="oscilloscopePlot" />
     </Grid>
 </UserControl>

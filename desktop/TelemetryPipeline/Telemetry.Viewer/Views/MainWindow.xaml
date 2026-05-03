@@ -5,7 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:Telemetry.Viewer.Views"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:plots="clr-namespace:Telemetry.Viewer.Views.Plots"
+    xmlns:wks="clr-namespace:Telemetry.Viewer.Views.Worksheet"
     Title="Telemetry Viewer"
     Width="800"
     Height="450"
@@ -123,12 +123,13 @@
             </ScrollViewer>
         </Border>
 
-        <!--  GridSplitter for resizing  -->
+        <!--  Sidebar/worksheet splitter — wider hit area with a thin visible line  -->
         <GridSplitter
             Grid.Column="1"
             Width="5"
             HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch" />
+            VerticalAlignment="Stretch"
+            Background="#BBB" />
 
         <!--  Worksheet Area (85%)  -->
         <Border Grid.Column="2" Background="{StaticResource WorksheetSurfaceBrush}">
@@ -141,9 +142,10 @@
                 <!--  Toolbar  -->
                 <Border
                     Grid.Row="0"
-                    Margin="0,0,0,10"
                     Padding="10,6"
-                    Background="{StaticResource WorksheetHeaderBrush}">
+                    Background="{StaticResource WorksheetHeaderBrush}"
+                    BorderBrush="#BBB"
+                    BorderThickness="0,0,0,1">
                     <ItemsControl ItemsSource="{Binding Worksheet.PlotTypes}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -162,21 +164,8 @@
                     </ItemsControl>
                 </Border>
 
-                <!--  Worksheet body — dynamic plots  -->
-                <Border Grid.Row="1" Background="{StaticResource WorksheetSurfaceBrush}">
-                    <ItemsControl ItemsSource="{Binding Worksheet.Plots}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Columns="2" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <plots:OscilloscopePlotView />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </Border>
+                <!--  Worksheet body — UserControl owns the canvas + grid + plot interactions  -->
+                <wks:WorksheetGrid Grid.Row="1" DataContext="{Binding Worksheet}" />
             </Grid>
         </Border>
     </Grid>

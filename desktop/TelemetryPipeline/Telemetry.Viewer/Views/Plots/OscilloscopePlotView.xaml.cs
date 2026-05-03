@@ -1,22 +1,45 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using ScottPlot.DataSources;
 using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Models.Plots;
 using Telemetry.Viewer.Models.Worksheet;
 using Telemetry.Viewer.Services.ContextMenu;
-using Telemetry.Viewer.ViewModels;
 
 namespace Telemetry.Viewer.Views.Plots
 {
-    public partial class OscilloscopePlotView : UserControl, IPlotView
+    public partial class OscilloscopePlotView : UserControl, IPlotView, IPlotDataAreaProvider
     {
         private ScottPlot.Plottables.Signal? _eventSignal;
+
+        public event Action<Rect>? DataAreaChanged;
 
         public OscilloscopePlotView()
         {
             InitializeComponent();
             Loaded += OnLoaded;
+        }
+
+        // RenderFinished can fire on a non-UI thread and fires multiple times
+        // (including before the plot has its real size). Subscribe only after
+        // the visual tree is up, marshal to the UI dispatcher, and read
+        // LastRender there so the rect reflects the laid-out size.
+        private void OnRenderFinished(object? sender, ScottPlot.RenderDetails e)
+        {
+            oscilloscopePlot.Dispatcher.Invoke(BroadcastDataArea);
+        }
+
+        private void BroadcastDataArea()
+        {
+            var px = oscilloscopePlot.Plot.RenderManager.LastRender.DataRect;
+            var dpi = VisualTreeHelper.GetDpi(oscilloscopePlot);
+            var rect = new Rect(
+                px.Left   / dpi.DpiScaleX,
+                px.Top    / dpi.DpiScaleY,
+                px.Width  / dpi.DpiScaleX,
+                px.Height / dpi.DpiScaleY);
+            DataAreaChanged?.Invoke(rect);
         }
 
         public Guid Id => Settings.PlotId;
@@ -32,9 +55,11 @@ namespace Telemetry.Viewer.Views.Plots
             Settings.PropertyChanged += (_, _) => ApplySettings();
             ApplySettings();
 
-            var window = Window.GetWindow(this);
-            if (window?.DataContext is MainWindowViewModel vm)
-                vm.Worksheet.NotifyViewLoaded(this);
+            // Subscribe AFTER the control is in the visual tree and has its
+            // real size — early-render rects (bitmap not yet sized) are bogus.
+            oscilloscopePlot.Plot.RenderManager.RenderFinished += OnRenderFinished;
+            oscilloscopePlot.Refresh();
+            BroadcastDataArea();
         }
 
         // Settings-driven scaffolding: axes, labels, ranges, title. Idempotent —
@@ -44,6 +69,14 @@ namespace Telemetry.Viewer.Views.Plots
         {
             oscilloscopePlot.Plot.Clear();
             _eventSignal = null;
+
+            // Outside the data rect (title / axis labels area) is transparent
+            // so the worksheet grid shows through; only the data area itself
+            // renders on a white surface. Thumbs hug the data rect, so users
+            // align plots to the grid by the data — not by the chrome.
+            oscilloscopePlot.Background = System.Windows.Media.Brushes.Transparent;
+            oscilloscopePlot.Plot.FigureBackground.Color = ScottPlot.Colors.Transparent;
+            oscilloscopePlot.Plot.DataBackground.Color = ScottPlot.Colors.White;
 
             oscilloscopePlot.Plot.Axes.Rules.Clear();
             oscilloscopePlot.Plot.Axes.Rules.Add(new ScottPlot.AxisRules.LockedVertical(oscilloscopePlot.Plot.Axes.Left, 0, 5000));
