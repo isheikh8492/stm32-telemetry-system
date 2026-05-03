@@ -1,6 +1,6 @@
 using Telemetry.Viewer.Models;
-using Telemetry.Viewer.Models.Worksheet;
 using Telemetry.Viewer.Services.DataSources;
+using Telemetry.Viewer.Views.Worksheet;
 
 namespace Telemetry.Viewer.Services.Pipeline;
 
@@ -36,10 +36,10 @@ public sealed class ViewportSession : IDisposable
     // The VM calls these when the worksheet changes so ProcessingEngine and
     // RenderingEngine stay in sync with what's actually on screen.
 
-    public void AddPlot(IPlotView plotView)
+    public void AddPlot(PlotItem plotItem)
     {
-        _store.UpsertSettings(plotView.Settings);
-        _rendering.Register(plotView.Settings.PlotId, plotView);
+        _store.UpsertSettings(plotItem.Settings);
+        _rendering.Register(plotItem.Settings.PlotId, plotItem);
     }
 
     public void RemovePlot(Guid plotId)

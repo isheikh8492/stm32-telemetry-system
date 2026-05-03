@@ -13,11 +13,11 @@ internal static class OscilloscopePlot
 {
     public static void Register(Worksheet.Worksheet worksheet)
     {
-        worksheet.RegisterPlotType<OscilloscopeSettings, OscilloscopePlotView>(
+        worksheet.RegisterPlotType<OscilloscopeSettings, OscilloscopePlotItem>(
             label:          "Oscilloscope",
             defaultSize:    new Size(400, 200),
             createSettings: () => new OscilloscopeSettings(plotId: Guid.NewGuid(), channelId: 0),
-            createView:     () => new OscilloscopePlotView(),
+            createItem:     () => new OscilloscopePlotItem(),
             menuBuilder:    s => new[]
             {
                 new ContextMenuProvider("Properties...", () => OpenProperties(s))

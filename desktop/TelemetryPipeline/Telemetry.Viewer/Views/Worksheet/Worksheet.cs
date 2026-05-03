@@ -2,9 +2,9 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Telemetry.Viewer.Common;
 using Telemetry.Viewer.Models;
-using Telemetry.Viewer.Models.Worksheet;
 using Telemetry.Viewer.Services.ContextMenu;
 using Telemetry.Viewer.Services.Pipeline;
 using Telemetry.Viewer.Views.Plots;
@@ -17,24 +17,24 @@ public sealed record PlotTypeOption(string Label, ICommand AddCommand);
 //
 // Workflow: clicking an Add-<X> toolbar button arms placement mode (cursor
 // becomes a crosshair); the next click on the worksheet canvas drops the
-// plot at that point. After the first render we adjust outer.L/T so the
-// data rect's TL lands on the snapped click, and resize the outer so the
-// data rect's W/H are integer multiples of snap — every corner thumb starts
-// on a grid intersection.
+// plot at that point. After the first render we adjust the outer rect so
+// the data rect's TL lands on the snapped click, and resize so the data
+// rect's W/H are integer multiples of snap — every corner thumb starts
+// on a grid intersection. Drag/resize preserve that invariant by snapping
+// the data rect (not the outer) at every step.
 public sealed class Worksheet
 {
     public ObservableCollection<PlotTypeOption> PlotTypes { get; } = new();
 
     private readonly Dictionary<Guid, PlotItem> _plots = new();
     private readonly Dictionary<Type, Func<PlotSettings, IReadOnlyList<ContextMenuProvider>>> _menus = new();
-    private readonly Dictionary<Type, Func<IPlotView>> _viewFactories = new();
+    private readonly Dictionary<Type, Func<PlotItem>> _viewFactories = new();
     private readonly Dictionary<Type, Size> _defaultSizes = new();
-
-    private readonly SelectionManager<PlotItem> _selection = new();
 
     private Canvas? _canvas;
     private ViewportSession? _session;
     private Func<PlotSettings>? _pendingFactory;
+    private PlotItem? _selected;
 
     private double _snapSize = 40;
     private int _nextZIndex = 1;
@@ -43,27 +43,21 @@ public sealed class Worksheet
     {
         OscilloscopePlot.Register(this);
         // future: HistogramPlot.Register(this);
-
-        _selection.SelectionChanged += item =>
-        {
-            if (item is not null)
-                Panel.SetZIndex(item.Container.Outer, _nextZIndex++);
-        };
     }
 
     // ---- Plot-type registration (called from each <X>Plot.Register) ----
 
-    public void RegisterPlotType<TSettings, TView>(
+    public void RegisterPlotType<TSettings, TItem>(
         string label,
         Size defaultSize,
         Func<TSettings> createSettings,
-        Func<TView> createView,
+        Func<TItem> createItem,
         Func<TSettings, IReadOnlyList<ContextMenuProvider>> menuBuilder)
         where TSettings : PlotSettings
-        where TView : UIElement, IPlotView
+        where TItem : PlotItem
     {
         _menus[typeof(TSettings)] = s => menuBuilder((TSettings)s);
-        _viewFactories[typeof(TSettings)] = () => createView();
+        _viewFactories[typeof(TSettings)] = () => createItem();
         _defaultSizes[typeof(TSettings)] = defaultSize;
 
         PlotTypes.Add(new PlotTypeOption(
@@ -86,7 +80,7 @@ public sealed class Worksheet
     {
         if (_pendingFactory is null)
         {
-            _selection.Select(null);
+            Select(null);
             return;
         }
 
@@ -113,70 +107,104 @@ public sealed class Worksheet
             _canvas.Cursor = null;
     }
 
+    // ---- Selection (single-select; bumps z-index, toggles thumbs) ----
+
+    private void Select(PlotItem? item)
+    {
+        if (ReferenceEquals(_selected, item)) return;
+
+        _selected?.Thumbs?.Hide();
+        _selected = item;
+
+        if (item is not null)
+        {
+            item.Thumbs?.Show();
+            if (item.Container is not null)
+                Panel.SetZIndex(item.Container.Outer, _nextZIndex++);
+        }
+    }
+
     // ---- Plot lifecycle ----
 
     private void AddPlotAt(PlotSettings settings, Point worksheetPoint)
     {
         if (_canvas is null) return;
-        if (!_viewFactories.TryGetValue(settings.GetType(), out var viewFactory)) return;
+        if (!_viewFactories.TryGetValue(settings.GetType(), out var itemFactory)) return;
 
-        var view = viewFactory();
-        if (view is FrameworkElement fe)
-            fe.DataContext = settings;
+        var item = itemFactory();
+        item.DataContext = settings;
 
         var size = _defaultSizes.TryGetValue(settings.GetType(), out var ds) ? ds : new Size(400, 200);
+        item.Width = size.Width;
+        item.Height = size.Height;
 
-        // Initial position: snap click point to nearest grid intersection.
-        // After the first render we'll adjust outer.L/T so the data area's TL
-        // (not the outer's TL) lands exactly on the intersection.
         var snap = _snapSize;
         var snappedX = Snap(worksheetPoint.X, snap);
         var snappedY = Snap(worksheetPoint.Y, snap);
 
-        var container = PlotContainerFactory.Create((UIElement)view, size, new Point(snappedX, snappedY));
-        view.AttachContextMenu(() => GetMenuFor(view.Settings));
+        // Build the per-plot visual tree:
+        //   outer (Canvas, positioned on worksheet)
+        //     └─ host (Grid)
+        //          ├─ plot item (z=0)
+        //          └─ drag layer (transparent, z=1)
+        var outer = new Canvas { Width = size.Width, Height = size.Height };
+        var host  = new Grid   { Width = size.Width, Height = size.Height };
 
-        var item = new PlotItem(settings, view, container);
+        host.Children.Add(item);
+        Panel.SetZIndex(item, 0);
+
+        var dragLayer = new Border
+        {
+            Background = Brushes.Transparent,
+            Cursor = Cursors.SizeAll
+        };
+        host.Children.Add(dragLayer);
+        Panel.SetZIndex(dragLayer, 1);
+
+        outer.Children.Add(host);
+        Canvas.SetLeft(outer, snappedX);
+        Canvas.SetTop(outer,  snappedY);
+
+        var container = new PlotContainer(outer, host, dragLayer);
+        item.Container = container;
+
+        item.AttachContextMenu(() => GetMenuFor(item.Settings));
+
+        var thumbs = ThumbManager.Wire(container, item, () => _snapSize);
+        item.Thumbs = thumbs;
+
         _plots[settings.PlotId] = item;
 
-        var thumbs = ThumbManager.Wire(container, view, () => _snapSize);
-        DragHandler.Wire(container, item, _canvas, _selection, () => _snapSize);
-        _selection.Register(item, onSelect: thumbs.Show, onDeselect: thumbs.Hide);
+        DragHandler.Wire(item, _canvas, Select, () => _snapSize);
 
         _canvas.Children.Add(container.Outer);
-        _selection.Select(item);
+        Select(item);
 
-        if (view is IPlotDataAreaProvider provider)
+        // Cache the latest data-area rect on the item so DragHandler can
+        // snap the data rect's TL to grid intersections.
+        item.DataAreaChanged += rect => item.DataArea = rect;
+
+        // First-render alignment: data rect's TL → clicked intersection,
+        // data rect's W/H → integer multiples of snap. Resizing the plot
+        // reflows axis labels and shifts the next render's data rect, so
+        // iterate a few rounds. Each pass re-reads the current data area;
+        // if chrome is stable, later rounds are no-ops.
+        int iter = 0;
+        Action<Rect>? handler = null;
+        handler = rect =>
         {
-            // Cache the latest data-area rect on the item so DragHandler can
-            // snap the data rect's TL (not the outer's TL) to grid intersections.
-            provider.DataAreaChanged += rect => item.DataArea = rect;
-
-            // First-render alignment: data rect's TL → clicked intersection,
-            // data rect's W/H → integer multiples of snap. Resizing the plot
-            // reflows axis labels and shifts the next render's data rect, so
-            // iterate a few rounds. Each pass re-reads the current data area;
-            // if chrome is stable, later rounds are no-ops.
-            int iter = 0;
-            Action<Rect>? handler = null;
-            handler = rect =>
+            if (++iter > 6)
             {
-                if (++iter > 6)
-                {
-                    provider.DataAreaChanged -= handler;
-                    return;
-                }
-                AlignToGrid(container, rect, snappedX, snappedY, snap);
-            };
-            provider.DataAreaChanged += handler;
-        }
+                item.DataAreaChanged -= handler;
+                return;
+            }
+            AlignToGrid(container, rect, snappedX, snappedY, snap);
+        };
+        item.DataAreaChanged += handler;
 
-        _session?.AddPlot(view);
+        _session?.AddPlot(item);
     }
 
-    // After first render: position so data area's TL = clicked intersection,
-    // and resize so data area's W/H are integer multiples of snap (every
-    // corner thumb lands on an intersection).
     private static void AlignToGrid(PlotContainer container, Rect dataArea, double targetTLx, double targetTLy, double snap)
     {
         Canvas.SetLeft(container.Outer, targetTLx - dataArea.X);
@@ -209,8 +237,11 @@ public sealed class Worksheet
     {
         if (!_plots.TryGetValue(plotId, out var item)) return;
 
-        _selection.Unregister(item);
-        _canvas?.Children.Remove(item.Container.Outer);
+        if (ReferenceEquals(_selected, item))
+            _selected = null;
+
+        if (item.Container is not null)
+            _canvas?.Children.Remove(item.Container.Outer);
         _plots.Remove(plotId);
         _session?.RemovePlot(plotId);
     }
@@ -221,7 +252,7 @@ public sealed class Worksheet
     {
         _session = session;
         foreach (var item in _plots.Values)
-            session.AddPlot(item.View);
+            session.AddPlot(item);
     }
 
     public void UnbindSession() => _session = null;

@@ -3,7 +3,6 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
-using Telemetry.Viewer.Models.Worksheet;
 
 namespace Telemetry.Viewer.Views.Worksheet;
 
@@ -63,11 +62,10 @@ internal sealed class ThumbManager
         SetVisible(false);
     }
 
-    public static ThumbManager Wire(PlotContainer container, IPlotView view, Func<double> getSnapSize)
+    public static ThumbManager Wire(PlotContainer container, PlotItem view, Func<double> getSnapSize)
     {
         var manager = new ThumbManager(container, getSnapSize);
-        if (view is IPlotDataAreaProvider provider)
-            provider.DataAreaChanged += manager.OnDataAreaChanged;
+        view.DataAreaChanged += manager.OnDataAreaChanged;
         return manager;
     }
 

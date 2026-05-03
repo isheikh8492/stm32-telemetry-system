@@ -10,18 +10,18 @@ internal static class DragHandler
     // matching the placement-time alignment so corner thumbs stay on the grid
     // through every drag.
     public static void Wire(
-        PlotContainer container,
         PlotItem item,
         Canvas worksheet,
-        SelectionManager<PlotItem> selection,
+        Action<PlotItem> onSelect,
         Func<double> getSnapSize)
     {
+        var container = item.Container!;
         Point dragOffset = default;
         bool dragging = false;
 
         container.DragLayer.MouseLeftButtonDown += (_, e) =>
         {
-            selection.Select(item);
+            onSelect(item);
             dragOffset = e.GetPosition(container.Outer);
             container.DragLayer.CaptureMouse();
             dragging = true;
@@ -35,13 +35,11 @@ internal static class DragHandler
             var snap = getSnapSize();
             var area = item.DataArea;
 
-            // Raw outer.L/T if we just followed the cursor.
             var rawL = p.X - dragOffset.X;
             var rawT = p.Y - dragOffset.Y;
 
             // Snap the data rect's TL — not the outer's — to a grid
-            // intersection, then back out outer.L/T. This preserves the
-            // post-drop invariant: data rect TL on a gridline crossing.
+            // intersection, then back out outer.L/T.
             var l = Snap(rawL + area.X, snap) - area.X;
             var t = Snap(rawT + area.Y, snap) - area.Y;
 
@@ -56,7 +54,7 @@ internal static class DragHandler
             dragging = false;
         };
 
-        container.DragLayer.MouseRightButtonDown += (_, _) => selection.Select(item);
+        container.DragLayer.MouseRightButtonDown += (_, _) => onSelect(item);
     }
 
     private static double Snap(double v, double s) => s > 0 ? Math.Round(v / s) * s : v;
