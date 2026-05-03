@@ -44,7 +44,6 @@ public sealed class ViewportSession : IDisposable
     public void AddPlot(IPlotView plotView)
     {
         _store.UpsertSettings(plotView.Settings);
-        plotView.InitializeStaticLayer();
         _rendering.Register(plotView.Settings.PlotId, plotView);
 
         if (_menuProvider is not null)

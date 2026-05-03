@@ -105,7 +105,7 @@ public sealed class RenderingEngine : PollingEngine
             foreach (var item in pending)
             {
                 var startTicks = Stopwatch.GetTimestamp();
-                item.Entry.Target.RenderDynamicLayer(item.Data);
+                item.Entry.Target.Render(item.Data);
                 var elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
                 RecordRenderTime(item.Data.GetType(), elapsedMs);
 

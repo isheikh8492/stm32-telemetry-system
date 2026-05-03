@@ -18,12 +18,10 @@ public interface IPlotView : IWorksheetItem
 {
     PlotSettings Settings { get; }
 
-    // Called once when the plot's UI control loads — sets up axes, labels,
-    // anything that doesn't change per-frame.
-    void InitializeStaticLayer();
-
-    // Called each render tick with the latest processed data.
-    void RenderDynamicLayer(ProcessedData data);
+    // Called by the rendering pipeline each time new processed data is ready
+    // for this plot. Settings-driven scaffolding (axes, labels, ranges) is the
+    // view's own concern — typically wired to Loaded + Settings.PropertyChanged.
+    void Render(ProcessedData data);
 
     // Factory is invoked each time the menu opens so it always reflects the
     // latest PlotSettings.
