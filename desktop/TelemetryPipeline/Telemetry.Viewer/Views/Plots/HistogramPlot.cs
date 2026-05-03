@@ -20,7 +20,7 @@ internal static class HistogramPlot
                 plotId:    Guid.NewGuid(),
                 channelId: 0,
                 param:     ParamType.PeakHeight,
-                binCount:  64,
+                binCount:  BinCount.Bins128,
                 minRange:  1,
                 maxRange:  1_000_000,
                 scale:     AxisScale.Logarithmic),

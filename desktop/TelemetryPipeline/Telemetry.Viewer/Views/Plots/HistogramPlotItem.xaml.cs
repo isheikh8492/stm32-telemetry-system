@@ -3,6 +3,7 @@ using System.Windows.Media;
 using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Models.Plots;
 using Telemetry.Viewer.Services.ContextMenu;
+using Telemetry.Viewer.Views.Plots.Axes;
 using Telemetry.Viewer.Views.Worksheet;
 
 namespace Telemetry.Viewer.Views.Plots
@@ -58,11 +59,15 @@ namespace Telemetry.Viewer.Views.Plots
             histogramPlot.Plot.XLabel(Hist.Param.ToString());
             histogramPlot.Plot.YLabel("Count");
 
+            // X is bin-position space → use BuildBinTickGenerator (labels at
+            // data-equivalent positions per the chosen scale). Y is data
+            // space (counts), always linear → use BuildTickGenerator. Y range
+            // recomputed each Render based on max count.
+            var binCount = (int)Hist.BinCount;
             histogramPlot.Plot.Axes.Bottom.TickGenerator =
-                AxisTicks.ForBinPositionX(Hist.MinRange, Hist.MaxRange, Hist.BinCount, Hist.Scale);
-            histogramPlot.Plot.Axes.Left.TickGenerator = AxisTicks.ForLinearY();
+                AxisFactory.For(Hist.Scale).BuildBinTickGenerator(Hist.MinRange, Hist.MaxRange, binCount);
 
-            histogramPlot.Plot.Axes.SetLimitsX(0, Hist.BinCount);
+            histogramPlot.Plot.Axes.SetLimitsX(0, binCount);
             histogramPlot.Refresh();
         }
 
@@ -94,11 +99,14 @@ namespace Telemetry.Viewer.Views.Plots
             }
             histogramPlot.Plot.Add.Bars(bars);
 
-            // X locked to bin-position space; Y always anchored at 0 with a
-            // touch of headroom on top so the tallest bar isn't flush against
-            // the axis.
-            histogramPlot.Plot.Axes.SetLimitsX(0, Hist.BinCount);
-            histogramPlot.Plot.Axes.SetLimitsY(0, Math.Max(1, maxCount * 1.05));
+            // X locked to bin-position space; Y anchored at 0 with 5% headroom.
+            // Linear count axis ticks are recomputed for the new range so labels
+            // (SI-prefixed: k, M, G) stay readable as the histogram grows.
+            var yMax = Math.Max(1, maxCount * 1.05);
+            histogramPlot.Plot.Axes.SetLimitsX(0, (int)Hist.BinCount);
+            histogramPlot.Plot.Axes.SetLimitsY(0, yMax);
+            histogramPlot.Plot.Axes.Left.TickGenerator =
+                AxisFactory.Linear.BuildTickGenerator(0, yMax);
             histogramPlot.Refresh();
         }
 

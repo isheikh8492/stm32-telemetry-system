@@ -8,7 +8,6 @@ namespace Telemetry.Viewer.Views.Dialogs
     public partial class HistogramPropertiesDialog : Window
     {
         private const int MaxChannelCount = 60;
-        private static readonly int[] AllowedBinCounts = { 64, 128, 256, 512 };
 
         private readonly HistogramSettings _settings;
 
@@ -23,8 +22,8 @@ namespace Telemetry.Viewer.Views.Dialogs
             ParamComboBox.ItemsSource = Enum.GetValues<ParamType>();
             ParamComboBox.SelectedItem = settings.Param;
 
-            BinCountComboBox.ItemsSource = AllowedBinCounts;
-            BinCountComboBox.SelectedItem = AllowedBinCounts.Contains(settings.BinCount) ? settings.BinCount : AllowedBinCounts[0];
+            BinCountComboBox.ItemsSource = Enum.GetValues<BinCount>();
+            BinCountComboBox.SelectedItem = settings.BinCount;
             MinRangeBox.Text = settings.MinRange.ToString(CultureInfo.InvariantCulture);
             MaxRangeBox.Text = settings.MaxRange.ToString(CultureInfo.InvariantCulture);
 
@@ -36,7 +35,7 @@ namespace Telemetry.Viewer.Views.Dialogs
         {
             if (ChannelIdComboBox.SelectedItem is not int channelId) return;
             if (ParamComboBox.SelectedItem is not ParamType param) return;
-            if (BinCountComboBox.SelectedItem is not int binCount) return;
+            if (BinCountComboBox.SelectedItem is not BinCount binCount) return;
             if (!double.TryParse(MinRangeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var minRange)) return;
             if (!double.TryParse(MaxRangeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var maxRange) || maxRange <= minRange) return;
             if (ScaleComboBox.SelectedItem is not AxisScale scale) return;

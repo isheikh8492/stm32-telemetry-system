@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Models.Plots;
 using Telemetry.Viewer.Services.DataSources;
+using Telemetry.Viewer.Views.Plots.Axes;
 
 namespace Telemetry.Viewer.Services.Pipeline;
 
@@ -115,42 +116,31 @@ public sealed class ProcessingEngine : PollingEngine
     // when it isn't, swap to per-plot accumulator state keyed by settings.Version.
     private static ProcessedData? ProcessHistogram(IDataSource source, HistogramSettings settings)
     {
-        if (settings.BinCount <= 0 || settings.MaxRange <= settings.MinRange)
-            return null;
-
         var snapshot = source.Snapshot();
-        if (snapshot.Count == 0)
-            return null;
+        if (snapshot.Count == 0) return null;
 
-        var counts = new long[settings.BinCount];
+        var strategy = AxisFactory.For(settings.Scale);
+        var binCount = (int)settings.BinCount;
+        var min = settings.MinRange;
+        var max = settings.MaxRange;
+        var selection = settings.Selection;
+
+        var counts = new long[binCount];
         long total = 0;
 
         foreach (var ev in snapshot)
         {
-            if (settings.ChannelId < 0 || settings.ChannelId >= ev.Channels.Count)
-                continue;
-            var p = ev.Channels[settings.ChannelId].Parameters;
-            double value = settings.Param switch
-            {
-                ParamType.Area       => p.Area,
-                ParamType.PeakHeight => p.PeakHeight,
-                ParamType.PeakWidth  => p.PeakWidth,
-                ParamType.Baseline   => p.Baseline,
-                _                    => double.NaN,
-            };
-            if (double.IsNaN(value)) continue;
-
-            var idx = settings.GetBinIndex(value);
-            if (idx is null) continue;
-
-            counts[idx.Value]++;
+            if (!selection.TryExtract(ev, out var value)) continue;
+            var idx = strategy.GetBinIndex(value, min, max, binCount);
+            if (idx < 0) continue;
+            counts[idx]++;
             total++;
         }
 
-        var bins = new HistogramBin[settings.BinCount];
-        for (int i = 0; i < settings.BinCount; i++)
+        var bins = new HistogramBin[binCount];
+        for (int i = 0; i < binCount; i++)
         {
-            var (start, end) = settings.GetBinRange(i);
+            var (start, end) = strategy.GetBinRange(i, min, max, binCount);
             bins[i] = new HistogramBin(start, end, counts[i]);
         }
         return new HistogramFrame(total, bins);
