@@ -41,6 +41,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         OscilloscopePlot.Register(Worksheet, _dialogs);
         HistogramPlot.Register(Worksheet, _dialogs);
         PseudocolorPlot.Register(Worksheet, _dialogs);
+        SpectralRibbonPlot.Register(Worksheet, _dialogs);
     }
 
     // Called once by MainWindow on Loaded. Keeps the ctor side-effect-free

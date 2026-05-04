@@ -44,6 +44,10 @@ public sealed class SelectionStrategy
     public static IReadOnlyList<ChannelDescriptor> AvailableChannels => ChannelCatalog.All;
     public static IReadOnlyList<ParamType> AvailableParams { get; } = Enum.GetValues<ParamType>();
 
+    // Convenience for plots that default to "all channels selected".
+    public static IReadOnlyList<int> AllChannelIds()
+        => Enumerable.Range(0, ChannelCatalog.Count).ToArray();
+
     // Resolve a raw channel id to its descriptor — single funnel used by
     // multi-channel plots (Oscilloscope) that need name/color but don't
     // carry a SelectionStrategy instance per channel.
@@ -79,9 +83,15 @@ public sealed class SelectionStrategy
     {
         value = 0;
         if (ChannelId < 0 || ChannelId >= ev.Channels.Count) return false;
+        return TryExtractParam(ev.Channels[ChannelId].Parameters, Param, out value);
+    }
 
-        var p = ev.Channels[ChannelId].Parameters;
-        value = Param switch
+    // Static parameter extraction — used by multi-channel processors that
+    // have many channel ids but one Param (Spectral Ribbon), so they don't
+    // construct a SelectionStrategy per channel just to call TryExtract.
+    public static bool TryExtractParam(EventParameters p, ParamType param, out double value)
+    {
+        value = param switch
         {
             ParamType.Area       => p.Area,
             ParamType.PeakHeight => p.PeakHeight,

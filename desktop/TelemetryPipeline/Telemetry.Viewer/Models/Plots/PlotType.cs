@@ -9,4 +9,5 @@ public enum PlotType
     Oscilloscope,
     Histogram,
     Pseudocolor,
+    SpectralRibbon,
 }

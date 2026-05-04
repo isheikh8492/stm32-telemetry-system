@@ -64,7 +64,7 @@ public sealed class PseudocolorPlotProcessor : IPlotProcessor
                     int y1 = pixelHeight - (int)((long)yi       * pixelHeight / yBins);
                     int y0 = pixelHeight - (int)((long)(yi + 1) * pixelHeight / yBins);
                     var t = (double)c / maxCount;
-                    PixelCanvas.FillRect(buffer, pixelWidth, pixelHeight, x0, y0, x1 - x0, y1 - y0, TurboColor(0.15 + 0.85 * t));
+                    PixelCanvas.FillRect(buffer, pixelWidth, pixelHeight, x0, y0, x1 - x0, y1 - y0, Colormaps.Turbo(0.15 + 0.85 * t));
                 }
             }
         }
@@ -72,37 +72,4 @@ public sealed class PseudocolorPlotProcessor : IPlotProcessor
         return new PseudocolorFrame(total, maxCount, buffer, pixelWidth, pixelHeight);
     }
 
-    // Turbo colormap (Mikhailov 2019), 8-stop piecewise linear approximation
-    // of the published LUT. Blue → cyan → green → yellow → red → dark red.
-    // t in [0, 1]; values outside are clamped.
-    private static readonly (double t, byte r, byte g, byte b)[] TurboStops =
-    {
-        (0.00,  48,  18,  59),  // dark purple-blue
-        (0.13,  70,  95, 230),  // blue
-        (0.27,   0, 220, 255),  // cyan
-        (0.40,   0, 255,  95),  // green
-        (0.55, 160, 255,  30),  // lime
-        (0.69, 255, 215,  30),  // yellow
-        (0.83, 255,  75,  25),  // orange-red
-        (1.00, 122,   4,   3),  // dark red
-    };
-
-    private static uint TurboColor(double t)
-    {
-        if (t <= TurboStops[0].t) { var s = TurboStops[0]; return PixelCanvas.Pack(s.r, s.g, s.b, 255); }
-        if (t >= TurboStops[^1].t) { var s = TurboStops[^1]; return PixelCanvas.Pack(s.r, s.g, s.b, 255); }
-        for (int i = 1; i < TurboStops.Length; i++)
-        {
-            var hi = TurboStops[i];
-            if (t > hi.t) continue;
-            var lo = TurboStops[i - 1];
-            var f = (t - lo.t) / (hi.t - lo.t);
-            return PixelCanvas.Pack(
-                (byte)(lo.r + (hi.r - lo.r) * f),
-                (byte)(lo.g + (hi.g - lo.g) * f),
-                (byte)(lo.b + (hi.b - lo.b) * f),
-                255);
-        }
-        return 0xFF000000;
-    }
 }
