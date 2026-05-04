@@ -1,3 +1,5 @@
+using Telemetry.Viewer.Models.Plots;
+
 namespace Telemetry.Viewer.Services.Pipeline;
 
 public abstract class PollingEngine : IDisposable
@@ -6,12 +8,12 @@ public abstract class PollingEngine : IDisposable
     private Timer? _timer;
     private int _isTicking;
 
-    // Per-type running totals for instrumentation. Subclasses call RecordTime
-    // from inside Tick; consumers (stats VM, tests) read averages via
-    // GetAverageTimes. Same shape in ProcessingEngine and RenderingEngine,
-    // hence shared here.
+    // Per-plot-type running totals for instrumentation. Subclasses call
+    // RecordTime from inside Tick; consumers (stats VM, tests) read averages
+    // via GetAverageTimes. Keyed by PlotType so multiple instances of the
+    // same type aggregate (e.g., 60 histograms → one "Histogram" stat row).
     private readonly object _metricsLock = new();
-    private readonly Dictionary<Type, (double totalMs, long count)> _metrics = new();
+    private readonly Dictionary<PlotType, (double totalMs, long count)> _metrics = new();
 
     protected PollingEngine(TimeSpan interval)
     {
@@ -37,7 +39,7 @@ public abstract class PollingEngine : IDisposable
 
     protected abstract void Tick();
 
-    protected void RecordTime(Type type, double elapsedMs)
+    protected void RecordTime(PlotType type, double elapsedMs)
     {
         lock (_metricsLock)
         {
@@ -48,7 +50,7 @@ public abstract class PollingEngine : IDisposable
         }
     }
 
-    public IReadOnlyDictionary<Type, double> GetAverageTimes()
+    public IReadOnlyDictionary<PlotType, double> GetAverageTimes()
     {
         lock (_metricsLock)
         {

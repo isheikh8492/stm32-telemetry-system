@@ -47,7 +47,7 @@ public sealed class ProcessingEngine : PollingEngine
             var startTicks = Stopwatch.GetTimestamp();
             var processed = processor.Process(settings, _source, pxW, pxH);
             var elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
-            RecordTime(settings.GetType(), elapsedMs);
+            RecordTime(settings.Type, elapsedMs);
 
             if (processed is not null)
             {

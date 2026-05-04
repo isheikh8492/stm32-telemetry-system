@@ -87,7 +87,7 @@ public sealed class RenderingEngine : PollingEngine
                 var startTicks = Stopwatch.GetTimestamp();
                 item.Entry.Target.Render(item.Data);
                 var elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
-                RecordTime(item.Data.GetType(), elapsedMs);
+                RecordTime(item.Entry.Target.Settings.Type, elapsedMs);
 
                 item.Entry.LastRenderedData = item.Data;
             }

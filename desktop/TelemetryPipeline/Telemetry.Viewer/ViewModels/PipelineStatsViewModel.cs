@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using Telemetry.Viewer.Common;
 using Telemetry.Viewer.Models.Plots;
@@ -7,8 +8,12 @@ namespace Telemetry.Viewer.ViewModels;
 
 // Bindable wrapper around the active pipeline's running stats. Owns a
 // DispatcherTimer that polls the session each second and formats the
-// numbers for the sidebar's Processing Stats panel. Lifetime is the same
-// as the parent VM; the underlying session is swapped in/out via Start/Stop.
+// numbers for the sidebar's Processing Stats panel.
+//
+// Per-plot-type timing: PlotStats has one row per PlotType (Oscilloscope,
+// Histogram, Pseudocolor, SpectralRibbon) with the average processing +
+// render time across all instances of that type. Rows are created once on
+// Start and updated in place each tick — no list churn.
 public sealed class PipelineStatsViewModel : ObservableObject, IDisposable
 {
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(1);
@@ -17,6 +22,21 @@ public sealed class PipelineStatsViewModel : ObservableObject, IDisposable
     private IPipelineSession? _session;
     private long _lastTotalAppended;
     private DateTime _lastSampleTime;
+
+    public ObservableCollection<PlotStatsRow> PlotStats { get; }
+
+    public PipelineStatsViewModel()
+    {
+        // Two rows per plot type — Processing first, then Rendering — so the
+        // sidebar reads as a flat list grouped by type.
+        var rows = new List<PlotStatsRow>();
+        foreach (var t in Enum.GetValues<PlotType>())
+        {
+            rows.Add(new PlotStatsRow(t, isProcessing: true));
+            rows.Add(new PlotStatsRow(t, isProcessing: false));
+        }
+        PlotStats = new ObservableCollection<PlotStatsRow>(rows);
+    }
 
     private string _totalEventsText = "0";
     public string TotalEventsText
@@ -30,20 +50,6 @@ public sealed class PipelineStatsViewModel : ObservableObject, IDisposable
     {
         get => _eventRateText;
         private set => SetProperty(ref _eventRateText, value);
-    }
-
-    private string _processingTimeText = "—";
-    public string ProcessingTimeText
-    {
-        get => _processingTimeText;
-        private set => SetProperty(ref _processingTimeText, value);
-    }
-
-    private string _renderTimeText = "—";
-    public string RenderTimeText
-    {
-        get => _renderTimeText;
-        private set => SetProperty(ref _renderTimeText, value);
     }
 
     public void Start(IPipelineSession session)
@@ -69,8 +75,8 @@ public sealed class PipelineStatsViewModel : ObservableObject, IDisposable
 
         TotalEventsText = "0";
         EventRateText = "0 ev/s";
-        ProcessingTimeText = "—";
-        RenderTimeText = "—";
+        foreach (var row in PlotStats)
+            row.Value = "—";
     }
 
     private void OnTick(object? sender, EventArgs e)
@@ -86,15 +92,14 @@ public sealed class PipelineStatsViewModel : ObservableObject, IDisposable
         TotalEventsText = $"{currentTotal:N0}";
         EventRateText = $"{rate:0} ev/s";
 
-        var processingTimes = _session.Viewport.GetProcessingTimes();
-        ProcessingTimeText = processingTimes.TryGetValue(typeof(OscilloscopeSettings), out var procMs)
-            ? $"{procMs:0.000} ms"
-            : "—";
+        var processing = _session.Viewport.GetProcessingTimes();
+        var rendering  = _session.Viewport.GetRenderingTimes();
 
-        var renderTimes = _session.Viewport.GetRenderingTimes();
-        RenderTimeText = renderTimes.TryGetValue(typeof(OscilloscopeFrame), out var renderMs)
-            ? $"{renderMs:0.000} ms"
-            : "—";
+        foreach (var row in PlotStats)
+        {
+            var dict = row.IsProcessing ? processing : rendering;
+            row.Value = dict.TryGetValue(row.Type, out var ms) ? $"{ms:0.000} ms" : "—";
+        }
     }
 
     public void Dispose() => Stop();

@@ -66,10 +66,10 @@ public sealed class ViewportSession : IDisposable
             _store.UpsertPixelSize(target.Id, target.PixelWidth, target.PixelHeight);
     }
 
-    public IReadOnlyDictionary<Type, double> GetProcessingTimes() =>
+    public IReadOnlyDictionary<Models.Plots.PlotType, double> GetProcessingTimes() =>
         _processing.GetAverageTimes();
 
-    public IReadOnlyDictionary<Type, double> GetRenderingTimes() =>
+    public IReadOnlyDictionary<Models.Plots.PlotType, double> GetRenderingTimes() =>
         _rendering.GetAverageTimes();
 
     public void ResetMetrics()

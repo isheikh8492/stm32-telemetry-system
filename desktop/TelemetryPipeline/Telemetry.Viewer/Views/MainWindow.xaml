@@ -96,7 +96,6 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
                                 <TextBlock
@@ -121,27 +120,29 @@
                                     Style="{StaticResource StatValue}"
                                     Text="{Binding Stats.EventRateText}" />
 
-                                <TextBlock
-                                    Grid.Row="2"
-                                    Grid.Column="0"
-                                    Style="{StaticResource StatLabel}"
-                                    Text="Processing" />
-                                <TextBlock
-                                    Grid.Row="2"
-                                    Grid.Column="1"
-                                    Style="{StaticResource StatValue}"
-                                    Text="{Binding Stats.ProcessingTimeText}" />
-
-                                <TextBlock
-                                    Grid.Row="3"
-                                    Grid.Column="0"
-                                    Style="{StaticResource StatLabel}"
-                                    Text="Render" />
-                                <TextBlock
-                                    Grid.Row="3"
-                                    Grid.Column="1"
-                                    Style="{StaticResource StatValue}"
-                                    Text="{Binding Stats.RenderTimeText}" />
+                                <!-- Per-plot-type timings: each row matches the surrounding
+                                     label/value pattern (type name left, "proc / render ms" right). -->
+                                <ItemsControl Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                                              ItemsSource="{Binding Stats.PlotStats}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="7*" />
+                                                    <ColumnDefinition Width="3*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0"
+                                                           Padding="6,3"
+                                                           Text="{Binding Name}" />
+                                                <TextBlock Grid.Column="1"
+                                                           Padding="6,3"
+                                                           HorizontalAlignment="Right"
+                                                           FontFamily="Consolas"
+                                                           Text="{Binding Value}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </Grid>
                         </StackPanel>
                     </StackPanel>
