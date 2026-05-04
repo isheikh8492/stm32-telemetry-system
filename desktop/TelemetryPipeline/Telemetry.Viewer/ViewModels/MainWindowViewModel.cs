@@ -3,6 +3,7 @@ using Telemetry.IO;
 using Telemetry.Viewer.Common;
 using Telemetry.Viewer.Services.Dialogs;
 using Telemetry.Viewer.Services.Pipeline;
+using Telemetry.Viewer.Views.Plots;
 using Telemetry.Viewer.Views.Worksheet;
 
 namespace Telemetry.Viewer.ViewModels;
@@ -32,6 +33,13 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         _toggleConnectionCommand = new RelayCommand(ToggleConnection, CanToggleConnection);
         ToggleConnectionCommand = _toggleConnectionCommand;
         RefreshPortsCommand = new RelayCommand(LoadAvailablePorts);
+
+        // Plot-type registry. Each per-plot wiring file (toolbar label,
+        // default size, factories, menu) lives next to its view; this is the
+        // single startup point that pulls them in. Adding a new plot type:
+        // create <Type>Plot.cs, add one Register call here.
+        OscilloscopePlot.Register(Worksheet, _dialogs);
+        HistogramPlot.Register(Worksheet, _dialogs);
     }
 
     // Called once by MainWindow on Loaded. Keeps the ctor side-effect-free

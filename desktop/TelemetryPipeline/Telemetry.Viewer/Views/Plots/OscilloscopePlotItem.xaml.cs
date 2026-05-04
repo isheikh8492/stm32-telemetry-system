@@ -1,7 +1,5 @@
 using System.Windows.Media;
 using ScottPlot.WPF;
-using Telemetry.Viewer.Models.Plots;
-using Telemetry.Viewer.Services.ContextMenu;
 using Telemetry.Viewer.Views.Plots.Axes;
 using Telemetry.Viewer.Views.Worksheet;
 
@@ -12,8 +10,6 @@ namespace Telemetry.Viewer.Views.Plots
         public OscilloscopePlotItem() => InitializeComponent();
 
         protected override WpfPlot Plot => oscilloscopePlot;
-
-        private OscilloscopeSettings Osc => (OscilloscopeSettings)DataContext;
 
         protected override void ApplySettings()
         {
@@ -40,8 +36,5 @@ namespace Telemetry.Viewer.Views.Plots
             oscilloscopePlot.Plot.Axes.SetLimits(left: 0, right: 32, bottom: 0, top: 5000);
             oscilloscopePlot.Refresh();
         }
-
-        public override void AttachContextMenu(Func<IReadOnlyList<ContextMenuProvider>> contextMenuProvider)
-            => PlotContextMenuFactory.Attach(oscilloscopePlot, Container!.DragLayer, contextMenuProvider);
     }
 }

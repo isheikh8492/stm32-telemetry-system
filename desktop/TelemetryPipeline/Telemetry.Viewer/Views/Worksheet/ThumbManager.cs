@@ -6,29 +6,25 @@ using System.Windows.Media;
 
 namespace Telemetry.Viewer.Views.Worksheet;
 
-// 4 corner Thumbs that resize the PlotContainer.
+// 4 corner Thumbs that resize the PlotItemHost.
 //
-// Snap policy: the dragged corner of the DATA RECT (not the outer
-// container) snaps to grid intersections — same rule as drag-to-move
-// and placement. Chrome offsets (data-rect-to-outer gaps) are cached at
-// drag start so we can convert between data-rect edges and outer edges
-// without disturbing the plot's chrome reflow during resize.
+// Snap policy: the dragged corner of the DATA RECT (not the host) snaps to
+// grid intersections — same rule as drag-to-move and placement. Chrome
+// offsets (data-rect-to-host gaps) are cached at drag start so we can
+// convert between data-rect edges and host edges without disturbing the
+// plot's chrome reflow during resize.
 //
-// We read the cursor directly via Mouse.GetPosition relative to the
-// worksheet canvas — sidestepping WPF Thumb's e.HorizontalChange (which
-// is cumulative AND auto-compensated whenever the thumb moves; fragile
-// against snap rounding).
+// Mutates Presenter.X/Y/Width/Height; ItemsControl + Canvas.Left/Top
+// bindings translate that into the visual move.
 internal sealed class ThumbManager
 {
     private const double MinSize = 50;
     private const double Half = 3;
 
-    private readonly PlotContainer _container;
-    private readonly Func<double> _getSnapSize;
+    private readonly PlotItemHost _host;
+    private readonly Worksheet _worksheet;
 
     private readonly Thumb _tl, _tr, _bl, _br;
-
-    private Rect _lastDataArea;
 
     // Drag-start state.
     private double _initialL, _initialT, _initialR, _initialB;
@@ -37,10 +33,10 @@ internal sealed class ThumbManager
 
     private enum Corner { TL, TR, BL, BR }
 
-    private ThumbManager(PlotContainer container, Func<double> getSnapSize)
+    private ThumbManager(PlotItemHost host, Worksheet worksheet)
     {
-        _container = container;
-        _getSnapSize = getSnapSize;
+        _host = host;
+        _worksheet = worksheet;
 
         _tl = MakeThumb(Cursors.SizeNWSE);
         _tr = MakeThumb(Cursors.SizeNESW);
@@ -52,27 +48,29 @@ internal sealed class ThumbManager
         WireThumb(_bl, Corner.BL);
         WireThumb(_br, Corner.BR);
 
+        // Hosted in the same Grid as the plot/data/drag layers, on top of
+        // everything via Z=100. The Grid layout keeps them inside the host's
+        // bounds; we then position via Margin so they sit at data-rect corners.
+        var grid = (Grid)host.Content;
         foreach (var t in new[] { _tl, _tr, _bl, _br })
         {
-            container.Outer.Children.Add(t);
+            grid.Children.Add(t);
             Panel.SetZIndex(t, 100);
+            t.HorizontalAlignment = HorizontalAlignment.Left;
+            t.VerticalAlignment   = VerticalAlignment.Top;
+            t.Visibility = Visibility.Collapsed;
         }
-
-        ParkAtOuterCorners();
-        SetVisible(false);
     }
 
-    public static ThumbManager Wire(PlotContainer container, PlotItem view, Func<double> getSnapSize)
+    public static ThumbManager Wire(PlotItemHost host, Worksheet worksheet)
     {
-        var manager = new ThumbManager(container, getSnapSize);
-        view.DataAreaChanged += manager.OnDataAreaChanged;
+        var manager = new ThumbManager(host, worksheet);
+        if (host.PlotItem is not null)
+            host.PlotItem.DataAreaChanged += manager.OnDataAreaChanged;
         return manager;
     }
 
-    public void Show() => SetVisible(true);
-    public void Hide() => SetVisible(false);
-
-    private void SetVisible(bool visible)
+    public void SetVisible(bool visible)
     {
         var v = visible ? Visibility.Visible : Visibility.Collapsed;
         _tl.Visibility = _tr.Visibility = _bl.Visibility = _br.Visibility = v;
@@ -90,18 +88,20 @@ internal sealed class ThumbManager
     {
         thumb.DragStarted += (_, _) =>
         {
-            _initialL = Canvas.GetLeft(_container.Outer);
-            _initialT = Canvas.GetTop(_container.Outer);
-            _initialR = _initialL + _container.Outer.Width;
-            _initialB = _initialT + _container.Outer.Height;
+            if (_host.Presenter is null) return;
+            _initialL = _host.Presenter.X;
+            _initialT = _host.Presenter.Y;
+            _initialR = _initialL + _host.Presenter.Width;
+            _initialB = _initialT + _host.Presenter.Height;
 
-            _leftChrome   = _lastDataArea.X;
-            _topChrome    = _lastDataArea.Y;
-            _rightChrome  = _container.Outer.Width  - _lastDataArea.Right;
-            _bottomChrome = _container.Outer.Height - _lastDataArea.Bottom;
+            var area = _host.LastDataArea;
+            _leftChrome   = area.X;
+            _topChrome    = area.Y;
+            _rightChrome  = _host.Presenter.Width  - area.Right;
+            _bottomChrome = _host.Presenter.Height - area.Bottom;
 
-            if (_container.Outer.Parent is IInputElement worksheet)
-                _dragStartCursor = Mouse.GetPosition(worksheet);
+            if (FindCanvasAncestor(_host) is IInputElement canvas)
+                _dragStartCursor = Mouse.GetPosition(canvas);
         };
 
         thumb.DragDelta += (_, _) => OnDragDelta(corner);
@@ -109,13 +109,14 @@ internal sealed class ThumbManager
 
     private void OnDragDelta(Corner corner)
     {
-        if (_container.Outer.Parent is not IInputElement worksheet) return;
+        if (_host.Presenter is null) return;
+        if (FindCanvasAncestor(_host) is not IInputElement canvas) return;
 
-        var cursor = Mouse.GetPosition(worksheet);
+        var cursor = Mouse.GetPosition(canvas);
         var dx = cursor.X - _dragStartCursor.X;
         var dy = cursor.Y - _dragStartCursor.Y;
 
-        var snap = _getSnapSize();
+        var snap = _worksheet.SnapSize;
 
         var l = _initialL;
         var t = _initialT;
@@ -125,8 +126,8 @@ internal sealed class ThumbManager
         bool movesLeft = corner == Corner.TL || corner == Corner.BL;
         bool movesTop  = corner == Corner.TL || corner == Corner.TR;
 
-        // Snap the DATA RECT edge, then convert back to outer-edge coords
-        // by adding/subtracting the cached chrome offset.
+        // Snap the DATA RECT edge, then convert back to host-edge coords by
+        // adding/subtracting the cached chrome offset.
         if (movesLeft)
         {
             var initialDataL = _initialL + _leftChrome;
@@ -157,53 +158,34 @@ internal sealed class ThumbManager
         var newH = b - t;
         if (newW < MinSize || newH < MinSize) return;
 
-        Canvas.SetLeft(_container.Outer, l);
-        Canvas.SetTop(_container.Outer,  t);
-        SetSize(newW, newH);
+        _host.Presenter.X = l;
+        _host.Presenter.Y = t;
+        _host.Presenter.Width = newW;
+        _host.Presenter.Height = newH;
     }
 
     private void OnDataAreaChanged(Rect dataRect)
     {
-        _lastDataArea = dataRect;
-        ParkAtDataArea(dataRect);
-    }
-
-    private void ParkAtOuterCorners()
-    {
-        var w = _container.Outer.Width;
-        var h = _container.Outer.Height;
-        Place(_tl, 0, 0);
-        Place(_tr, w, 0);
-        Place(_bl, 0, h);
-        Place(_br, w, h);
-    }
-
-    private void ParkAtDataArea(Rect r)
-    {
-        Place(_tl, r.X,            r.Y);
-        Place(_tr, r.X + r.Width,  r.Y);
-        Place(_bl, r.X,            r.Y + r.Height);
-        Place(_br, r.X + r.Width,  r.Y + r.Height);
+        // Park thumbs at data-rect corners. Margin offset is relative to the
+        // host's TL (0,0).
+        Place(_tl, dataRect.X,                  dataRect.Y);
+        Place(_tr, dataRect.X + dataRect.Width, dataRect.Y);
+        Place(_bl, dataRect.X,                  dataRect.Y + dataRect.Height);
+        Place(_br, dataRect.X + dataRect.Width, dataRect.Y + dataRect.Height);
     }
 
     private static void Place(Thumb t, double x, double y)
-    {
-        Canvas.SetLeft(t, x - Half);
-        Canvas.SetTop(t,  y - Half);
-    }
+        => t.Margin = new Thickness(x - Half, y - Half, 0, 0);
 
-    private void SetSize(double w, double h)
+    private static IInputElement? FindCanvasAncestor(DependencyObject from)
     {
-        _container.Outer.Width = w;
-        _container.Outer.Height = h;
-        _container.Host.Width = w;
-        _container.Host.Height = h;
-
-        if (_container.Host.Children.Count > 0 && _container.Host.Children[0] is FrameworkElement plot)
+        var obj = VisualTreeHelper.GetParent(from);
+        while (obj is not null)
         {
-            plot.Width = w;
-            plot.Height = h;
+            if (obj is Canvas c) return c;
+            obj = VisualTreeHelper.GetParent(obj);
         }
+        return null;
     }
 
     private static double SnapTo(double v, double s) => s > 0 ? Math.Round(v / s) * s : v;

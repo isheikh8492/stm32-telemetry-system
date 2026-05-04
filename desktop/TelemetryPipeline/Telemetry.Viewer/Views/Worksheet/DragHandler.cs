@@ -1,60 +1,78 @@
 using System.Windows;
-using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 
 namespace Telemetry.Viewer.Views.Worksheet;
 
 internal static class DragHandler
 {
-    // Wires drag-to-move on the container's transparent DragLayer. Snaps the
-    // DATA RECT's top-left to grid intersections (not the outer container's),
-    // matching the placement-time alignment so corner thumbs stay on the grid
-    // through every drag.
-    public static void Wire(
-        PlotItem item,
-        Canvas worksheet,
-        Action<PlotItem> onSelect,
-        Func<double> getSnapSize)
+    // Wires drag-to-move on the host's transparent DragLayer. Snaps the
+    // DATA RECT's top-left to grid intersections (not the host's), matching
+    // the placement-time alignment so the corner thumbs stay on the grid
+    // through every drag. Mutates Presenter.X/Y; ItemsControl + Canvas.Left
+    // bindings translate that into the visual move.
+    public static void Wire(PlotItemHost host, Worksheet worksheet)
     {
-        var container = item.Container!;
         Point dragOffset = default;
         bool dragging = false;
 
-        container.DragLayer.MouseLeftButtonDown += (_, e) =>
+        host.DragLayerElement.MouseLeftButtonDown += (_, e) =>
         {
-            onSelect(item);
-            dragOffset = e.GetPosition(container.Outer);
-            container.DragLayer.CaptureMouse();
+            if (host.Presenter is null) return;
+            worksheet.Select(host.Presenter);
+            dragOffset = e.GetPosition(host);
+            host.DragLayerElement.CaptureMouse();
             dragging = true;
             e.Handled = true;
         };
 
-        container.DragLayer.MouseMove += (_, e) =>
+        host.DragLayerElement.MouseMove += (_, e) =>
         {
-            if (!dragging) return;
-            var p = e.GetPosition(worksheet);
-            var snap = getSnapSize();
-            var area = item.DataArea;
+            if (!dragging || host.Presenter is null) return;
+            var canvas = FindCanvasAncestor(host);
+            if (canvas is null) return;
+
+            var p = e.GetPosition(canvas);
+            var snap = worksheet.SnapSize;
+            var area = host.LastDataArea;
 
             var rawL = p.X - dragOffset.X;
             var rawT = p.Y - dragOffset.Y;
 
-            // Snap the data rect's TL — not the outer's — to a grid
-            // intersection, then back out outer.L/T.
+            // Snap the data rect's TL — not the host's — to a grid intersection,
+            // then back out host X/Y.
             var l = Snap(rawL + area.X, snap) - area.X;
             var t = Snap(rawT + area.Y, snap) - area.Y;
 
-            Canvas.SetLeft(container.Outer, Math.Max(0, l));
-            Canvas.SetTop(container.Outer,  Math.Max(0, t));
+            host.Presenter.X = Math.Max(0, l);
+            host.Presenter.Y = Math.Max(0, t);
         };
 
-        container.DragLayer.MouseLeftButtonUp += (_, _) =>
+        host.DragLayerElement.MouseLeftButtonUp += (_, _) =>
         {
             if (!dragging) return;
-            container.DragLayer.ReleaseMouseCapture();
+            host.DragLayerElement.ReleaseMouseCapture();
             dragging = false;
         };
 
-        container.DragLayer.MouseRightButtonDown += (_, _) => onSelect(item);
+        host.DragLayerElement.MouseRightButtonDown += (_, _) =>
+        {
+            if (host.Presenter is not null)
+                worksheet.Select(host.Presenter);
+        };
+    }
+
+    // Walks up to the worksheet's Canvas (the ItemsControl's panel) so we can
+    // read mouse position in worksheet coordinates.
+    private static IInputElement? FindCanvasAncestor(DependencyObject from)
+    {
+        var obj = VisualTreeHelper.GetParent(from);
+        while (obj is not null)
+        {
+            if (obj is System.Windows.Controls.Canvas c) return c;
+            obj = VisualTreeHelper.GetParent(obj);
+        }
+        return null;
     }
 
     private static double Snap(double v, double s) => s > 0 ? Math.Round(v / s) * s : v;

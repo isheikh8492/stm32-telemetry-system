@@ -44,8 +44,11 @@ public sealed class ProcessingEngine : PollingEngine
             if (_fingerprints.TryGetValue(settings.PlotId, out var prev) && prev == fingerprint)
                 continue;
 
+            var processor = PlotProcessorRegistry.For(settings.Type);
+            if (processor is null) continue;
+
             var startTicks = Stopwatch.GetTimestamp();
-            var processed = PlotProcessor.Process(settings, _source, pxW, pxH);
+            var processed = processor.Process(settings, _source, pxW, pxH);
             var elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
             RecordComputeTime(settings.GetType(), elapsedMs);
 

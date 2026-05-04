@@ -2,6 +2,8 @@ using System.Windows;
 using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Models.Plots;
 using Telemetry.Viewer.Services.ContextMenu;
+using Telemetry.Viewer.Services.Dialogs;
+using Telemetry.Viewer.Services.Pipeline.Processors;
 using Telemetry.Viewer.Views.Dialogs;
 
 namespace Telemetry.Viewer.Views.Plots;
@@ -10,8 +12,10 @@ namespace Telemetry.Viewer.Views.Plots;
 // view factory, settings factory, menu shape, dialog routing.
 internal static class HistogramPlot
 {
-    public static void Register(Worksheet.Worksheet worksheet)
+    public static void Register(Worksheet.Worksheet worksheet, IDialogService dialogs)
     {
+        PlotProcessorRegistry.Register(PlotType.Histogram, new HistogramPlotProcessor());
+
         worksheet.RegisterPlotType<HistogramSettings, HistogramPlotItem>(
             type:           PlotType.Histogram,
             label:          "Histogram",
@@ -27,16 +31,10 @@ internal static class HistogramPlot
             createItem:     () => new HistogramPlotItem(),
             menuBuilder:    s => new[]
             {
-                new ContextMenuProvider("Properties...", () => OpenProperties(s))
+                new ContextMenuProvider("Properties...", () => OpenProperties(s, dialogs))
             });
     }
 
-    private static void OpenProperties(HistogramSettings settings)
-    {
-        var dialog = new HistogramPropertiesDialog(settings)
-        {
-            Owner = Application.Current.MainWindow
-        };
-        dialog.ShowDialog();
-    }
+    private static void OpenProperties(HistogramSettings settings, IDialogService dialogs)
+        => dialogs.ShowDialog(new HistogramPropertiesDialog(settings));
 }

@@ -33,13 +33,17 @@ namespace Telemetry.Viewer.Views.Dialogs
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
-            if (ChannelIdComboBox.SelectedItem is not int channelId) return;
-            if (ParamComboBox.SelectedItem is not ParamType param) return;
-            if (BinCountComboBox.SelectedItem is not BinCount binCount) return;
-            if (!double.TryParse(MinRangeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var minRange)) return;
-            if (!double.TryParse(MaxRangeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var maxRange) || maxRange <= minRange) return;
-            if (ScaleComboBox.SelectedItem is not AxisScale scale) return;
-            if (scale == AxisScale.Logarithmic && minRange <= 0) return;  // log requires positive min
+            if (ChannelIdComboBox.SelectedItem is not int channelId) { Reject("Channel is required."); return; }
+            if (ParamComboBox.SelectedItem is not ParamType param)  { Reject("Parameter is required."); return; }
+            if (BinCountComboBox.SelectedItem is not BinCount binCount) { Reject("Bin count is required."); return; }
+            if (!double.TryParse(MinRangeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var minRange))
+            { Reject("Min range must be a number."); return; }
+            if (!double.TryParse(MaxRangeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var maxRange))
+            { Reject("Max range must be a number."); return; }
+            if (maxRange <= minRange) { Reject("Max range must be greater than min range."); return; }
+            if (ScaleComboBox.SelectedItem is not AxisScale scale) { Reject("Scale is required."); return; }
+            if (scale == AxisScale.Logarithmic && minRange <= 0)
+            { Reject("Logarithmic scale requires a positive min range."); return; }
 
             // Mutates the live settings instance — bumps Version, ProcessingEngine
             // sees the new fingerprint next tick and reprocesses.
@@ -52,6 +56,9 @@ namespace Telemetry.Viewer.Views.Dialogs
 
             DialogResult = true;
         }
+
+        private void Reject(string message)
+            => MessageBox.Show(this, message, "Invalid input", MessageBoxButton.OK, MessageBoxImage.Warning);
 
         private void CancelButton_Click(object sender, RoutedEventArgs e) => DialogResult = false;
     }

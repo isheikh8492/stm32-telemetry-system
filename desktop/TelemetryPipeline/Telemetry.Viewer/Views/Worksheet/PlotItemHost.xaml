@@ -1,0 +1,25 @@
+<UserControl
+    x:Class="Telemetry.Viewer.Views.Worksheet.PlotItemHost"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:dyn="clr-namespace:Telemetry.Viewer.Views.Plots.DynamicSurface"
+    Width="{Binding Width, Mode=TwoWay}"
+    Height="{Binding Height, Mode=TwoWay}">
+    <Grid x:Name="Host">
+        <!-- z=0: PlotItem (axes/labels via ScottPlot), inserted at runtime
+             via the PlotTypeRegistry factory. -->
+        <ContentControl x:Name="PlotHost" Panel.ZIndex="0" />
+
+        <!-- z=1: WriteableBitmap data-layer, sized to the plot's data rect. -->
+        <dyn:DynamicBitmap x:Name="DataLayer" Panel.ZIndex="1" />
+
+        <!-- z=2: transparent pointer-capture overlay; intercepts drag and
+             right-click so the plot's own input is suppressed. -->
+        <Border x:Name="DragLayer"
+                Panel.ZIndex="2"
+                Background="Transparent"
+                Cursor="SizeAll" />
+
+        <!-- z=100: corner resize thumbs added in code-behind. -->
+    </Grid>
+</UserControl>

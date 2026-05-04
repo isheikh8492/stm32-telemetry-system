@@ -2,7 +2,6 @@ using System.Windows.Media;
 using ScottPlot.WPF;
 using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Models.Plots;
-using Telemetry.Viewer.Services.ContextMenu;
 using Telemetry.Viewer.Views.Plots.Axes;
 using Telemetry.Viewer.Views.Worksheet;
 
@@ -58,8 +57,5 @@ namespace Telemetry.Viewer.Views.Plots
             histogramPlot.Plot.Axes.SetLimitsY(0, frame.YMax);
             histogramPlot.Refresh();
         }
-
-        public override void AttachContextMenu(Func<IReadOnlyList<ContextMenuProvider>> contextMenuProvider)
-            => PlotContextMenuFactory.Attach(histogramPlot, Container!.DragLayer, contextMenuProvider);
     }
 }

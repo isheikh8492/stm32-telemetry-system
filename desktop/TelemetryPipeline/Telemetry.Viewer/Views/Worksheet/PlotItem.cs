@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -5,62 +6,77 @@ using ScottPlot.WPF;
 using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Models.Worksheet;
 using Telemetry.Viewer.Services.ContextMenu;
+using Telemetry.Viewer.Services.Pipeline;
 
 namespace Telemetry.Viewer.Views.Worksheet;
 
 // Abstract base for everything that can live on the worksheet.
 //
 // Per-frame UI work is intentionally tiny: PlotProcessor has already painted
-// the bitmap off-thread. Render() runs on the UI thread and:
-//   1. lets subclasses do any UI-only work (e.g. axis-range updates that
-//      drive ScottPlot's static layer) via OnRender(),
-//   2. blits the processor's pixel buffer onto DynamicBitmap.
+// the bitmap off-thread. Render() runs on the UI thread, lets subclasses do
+// any UI-only work via OnRender(), then forwards the buffer to the host's
+// DynamicBitmap for a memcpy blit.
 //
-// Boilerplate that every plot type would otherwise duplicate also lives here:
+// Boilerplate every plot type would otherwise duplicate also lives here:
 // settings change → ApplySettings; ScottPlot RenderFinished → broadcast the
-// data rect (in DIPs) so the worksheet can size DynamicBitmap to it.
-public abstract class PlotItem : UserControl, IWorksheetItem
+// data rect (in DIPs) so PlotItemHost can size DynamicBitmap to it.
+public abstract class PlotItem : UserControl, IWorksheetItem, IRenderTarget
 {
     public PlotSettings Settings => (PlotSettings)DataContext;
     public Guid Id => Settings.PlotId;
     public new string Name => Settings.DisplayName;
 
-    internal PlotContainer? Container { get; set; }
-    internal ThumbManager? Thumbs { get; set; }
-    internal Rect DataArea { get; set; }
+    // Set by PlotItemHost during its Loaded handler. Render() forwards the
+    // painted buffer here; PixelWidth/Height read from the host's bitmap.
+    internal PlotItemHost? Host { get; set; }
 
-    // Current target pixel size of this plot's data-bitmap surface. Read by
-    // ViewportSession when hydrating the DataStore on AddPlot and on every
-    // DataAreaChanged. (0,0) until the surface has been Sync'd.
-    public int PixelWidth  => Container?.DynamicSurface.TargetWidth  ?? 0;
-    public int PixelHeight => Container?.DynamicSurface.TargetHeight ?? 0;
+    public int PixelWidth  => Host?.DataLayerElement.TargetWidth  ?? 0;
+    public int PixelHeight => Host?.DataLayerElement.TargetHeight ?? 0;
 
     // The ScottPlot control that owns this plot's static layer (axes/labels).
     // Subclasses point this at their named WpfPlot from XAML.
     protected abstract WpfPlot Plot { get; }
 
-    public abstract void AttachContextMenu(Func<IReadOnlyList<ContextMenuProvider>> contextMenuProvider);
-
     public event Action<Rect>? DataAreaChanged;
     protected void RaiseDataAreaChanged(Rect rect) => DataAreaChanged?.Invoke(rect);
 
+    private PropertyChangedEventHandler? _settingsHandler;
+    private EventHandler<ScottPlot.RenderDetails>? _renderFinishedHandler;
+    private PlotSettings? _subscribedSettings;
+
     protected PlotItem()
     {
-        Loaded += OnLoadedBase;
+        Loaded   += OnLoadedBase;
+        Unloaded += OnUnloadedBase;
     }
 
     private void OnLoadedBase(object sender, RoutedEventArgs e)
     {
-        // Subscribe BEFORE ApplySettings — ApplySettings's own Refresh() is
-        // typically the first render, and we need to catch its RenderFinished
-        // to learn the real DataRect (LastRender is bogus until then).
-        Plot.Plot.RenderManager.RenderFinished += OnRenderFinished;
+        // Subscribe BEFORE ApplySettings — its own Refresh() is typically the
+        // first render, and we need to catch its RenderFinished to learn the
+        // real DataRect (LastRender is bogus until then).
+        _renderFinishedHandler = OnRenderFinished;
+        Plot.Plot.RenderManager.RenderFinished += _renderFinishedHandler;
 
-        Settings.PropertyChanged += (_, _) => ApplySettings();
+        _subscribedSettings = Settings;
+        _settingsHandler = (_, _) => ApplySettings();
+        _subscribedSettings.PropertyChanged += _settingsHandler;
+
         ApplySettings();
     }
 
-    // RenderFinished can fire on a non-UI thread; marshal back to UI dispatcher.
+    private void OnUnloadedBase(object sender, RoutedEventArgs e)
+    {
+        if (_renderFinishedHandler is not null)
+            Plot.Plot.RenderManager.RenderFinished -= _renderFinishedHandler;
+        _renderFinishedHandler = null;
+
+        if (_subscribedSettings is not null && _settingsHandler is not null)
+            _subscribedSettings.PropertyChanged -= _settingsHandler;
+        _subscribedSettings = null;
+        _settingsHandler = null;
+    }
+
     private void OnRenderFinished(object? sender, ScottPlot.RenderDetails e)
         => Plot.Dispatcher.Invoke(BroadcastDataArea);
 
@@ -75,18 +91,24 @@ public abstract class PlotItem : UserControl, IWorksheetItem
             px.Height / dpi.DpiScaleY));
     }
 
-    // Settings-driven scaffolding (axes, labels, ranges). Idempotent — called
-    // on Loaded and on every Settings.PropertyChanged.
     protected abstract void ApplySettings();
 
-    // UI-thread hook for subclasses (axis-range updates, ScottPlot Refresh).
     protected virtual void OnRender(ProcessedData data) { }
 
     // Final orchestrator — RenderingEngine calls this on the UI thread.
     public void Render(ProcessedData data)
     {
-        if (Container is null) return;
+        if (Host is null) return;
         OnRender(data);
-        Container.DynamicSurface.PresentBitmap(data.Buffer, data.PixelWidth, data.PixelHeight);
+        Host.DataLayerElement.PresentBitmap(data.Buffer, data.PixelWidth, data.PixelHeight);
+    }
+
+    // Plot exposes the ScottPlot control already; the host owns the drag
+    // overlay that holds the right-click handler. Called by PlotItemHost
+    // once it's in the visual tree and has built its tree.
+    public void AttachContextMenu(Func<IReadOnlyList<ContextMenuProvider>> contextMenuProvider)
+    {
+        if (Host is null) return;
+        PlotContextMenuFactory.Attach(Plot, Host.DragLayerElement, contextMenuProvider);
     }
 }

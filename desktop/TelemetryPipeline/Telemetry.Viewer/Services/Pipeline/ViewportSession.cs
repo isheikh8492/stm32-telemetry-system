@@ -1,5 +1,4 @@
 using Telemetry.Viewer.Services.DataSources;
-using Telemetry.Viewer.Views.Worksheet;
 
 namespace Telemetry.Viewer.Services.Pipeline;
 
@@ -41,16 +40,16 @@ public sealed class ViewportSession : IDisposable
     // Pixel size is hydrated from the plot's current PixelWidth/Height (handles
     // plots added before the session existed) and kept in sync via DataAreaChanged.
 
-    public void AddPlot(PlotItem plotItem)
+    public void AddPlot(IRenderTarget target)
     {
-        var id = plotItem.Id;
-        _store.UpsertSettings(plotItem.Settings);
-        _rendering.Register(id, plotItem);
+        var id = target.Id;
+        _store.UpsertSettings(target.Settings);
+        _rendering.Register(id, target);
 
-        PushPixelSize(plotItem);
-        Action<System.Windows.Rect> listener = _ => PushPixelSize(plotItem);
-        plotItem.DataAreaChanged += listener;
-        _teardown[id] = () => plotItem.DataAreaChanged -= listener;
+        PushPixelSize(target);
+        Action<System.Windows.Rect> listener = _ => PushPixelSize(target);
+        target.DataAreaChanged += listener;
+        _teardown[id] = () => target.DataAreaChanged -= listener;
     }
 
     public void RemovePlot(Guid plotId)
@@ -61,10 +60,10 @@ public sealed class ViewportSession : IDisposable
         _rendering.Unregister(plotId);
     }
 
-    private void PushPixelSize(PlotItem plotItem)
+    private void PushPixelSize(IRenderTarget target)
     {
-        if (plotItem.PixelWidth > 0 && plotItem.PixelHeight > 0)
-            _store.UpsertPixelSize(plotItem.Id, plotItem.PixelWidth, plotItem.PixelHeight);
+        if (target.PixelWidth > 0 && target.PixelHeight > 0)
+            _store.UpsertPixelSize(target.Id, target.PixelWidth, target.PixelHeight);
     }
 
     public IReadOnlyDictionary<Type, double> GetProcessingTimes() =>

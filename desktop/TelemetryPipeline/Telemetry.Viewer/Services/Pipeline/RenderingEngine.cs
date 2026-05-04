@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Telemetry.Viewer.Models;
-using Telemetry.Viewer.Views.Worksheet;
 
 namespace Telemetry.Viewer.Services.Pipeline;
 
@@ -27,7 +26,7 @@ public sealed class RenderingEngine : PollingEngine
         _store = store;
     }
 
-    public void Register(Guid plotId, PlotItem target)
+    public void Register(Guid plotId, IRenderTarget target)
     {
         lock (_targetsLock)
             _targets[plotId] = new RenderTargetEntry(plotId, target);
@@ -139,10 +138,10 @@ public sealed class RenderingEngine : PollingEngine
     private sealed class RenderTargetEntry
     {
         public Guid PlotId { get; }
-        public PlotItem Target { get; }
+        public IRenderTarget Target { get; }
         public ProcessedData? LastRenderedData;   // mutated on UI thread only
 
-        public RenderTargetEntry(Guid plotId, PlotItem target)
+        public RenderTargetEntry(Guid plotId, IRenderTarget target)
         {
             PlotId = plotId;
             Target = target;
