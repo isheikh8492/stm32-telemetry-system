@@ -1,4 +1,3 @@
-using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Services.DataSources;
 using Telemetry.Viewer.Views.Worksheet;
 
@@ -12,6 +11,10 @@ public sealed class ViewportSession : IDisposable
     private readonly DataStore _store = new();
     private readonly ProcessingEngine _processing;
     private readonly RenderingEngine _rendering;
+
+    // Per-plot teardown action. Captured at AddPlot time, invoked at RemovePlot
+    // (or Dispose) so we don't keep stale plot items alive via event handlers.
+    private readonly Dictionary<Guid, Action> _teardown = new();
 
     public ViewportSession(
         IDataSource source,
@@ -33,23 +36,36 @@ public sealed class ViewportSession : IDisposable
     public DataStore Store => _store;
 
     // ---- SettingsSink ----
-    // The VM calls these when the worksheet changes so ProcessingEngine and
-    // RenderingEngine stay in sync with what's actually on screen.
+    // The session is the single owner of every channel that flows into the
+    // DataStore (settings + pixel size). Callers never poke the store directly.
+    // Pixel size is hydrated from the plot's current PixelWidth/Height (handles
+    // plots added before the session existed) and kept in sync via DataAreaChanged.
 
     public void AddPlot(PlotItem plotItem)
     {
+        var id = plotItem.Id;
         _store.UpsertSettings(plotItem.Settings);
-        _rendering.Register(plotItem.Settings.PlotId, plotItem);
+        _rendering.Register(id, plotItem);
+
+        PushPixelSize(plotItem);
+        Action<System.Windows.Rect> listener = _ => PushPixelSize(plotItem);
+        plotItem.DataAreaChanged += listener;
+        _teardown[id] = () => plotItem.DataAreaChanged -= listener;
     }
 
     public void RemovePlot(Guid plotId)
     {
+        if (_teardown.Remove(plotId, out var teardown))
+            teardown();
         _store.RemovePlot(plotId);
         _rendering.Unregister(plotId);
     }
 
-    public void UpdatePixelSize(Guid plotId, int width, int height)
-        => _store.UpsertPixelSize(plotId, width, height);
+    private void PushPixelSize(PlotItem plotItem)
+    {
+        if (plotItem.PixelWidth > 0 && plotItem.PixelHeight > 0)
+            _store.UpsertPixelSize(plotItem.Id, plotItem.PixelWidth, plotItem.PixelHeight);
+    }
 
     public IReadOnlyDictionary<Type, double> GetProcessingTimes() =>
         _processing.GetAverageComputeTimes();
@@ -77,6 +93,8 @@ public sealed class ViewportSession : IDisposable
 
     public void Dispose()
     {
+        foreach (var teardown in _teardown.Values) teardown();
+        _teardown.Clear();
         _processing.Dispose();
         _rendering.Dispose();
     }

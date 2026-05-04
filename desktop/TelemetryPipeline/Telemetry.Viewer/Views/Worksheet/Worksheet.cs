@@ -195,7 +195,6 @@ public sealed class Worksheet
         {
             item.DataArea = rect;
             dynamicSurface.Sync(rect);
-            _session?.UpdatePixelSize(settings.PlotId, dynamicSurface.TargetWidth, dynamicSurface.TargetHeight);
         };
 
         // First-render alignment: data rect's TL → clicked intersection,

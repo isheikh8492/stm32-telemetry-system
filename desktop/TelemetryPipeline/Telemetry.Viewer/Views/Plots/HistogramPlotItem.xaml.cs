@@ -1,5 +1,5 @@
-using System.Windows;
 using System.Windows.Media;
+using ScottPlot.WPF;
 using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Models.Plots;
 using Telemetry.Viewer.Services.ContextMenu;
@@ -10,48 +10,21 @@ namespace Telemetry.Viewer.Views.Plots
 {
     public partial class HistogramPlotItem : PlotItem
     {
-        // Tracked so we only Refresh ScottPlot's static layer when the Y range
-        // actually changes (axis labels follow). Most frames at high event
-        // rate share the same NiceMax → no Refresh, just a bitmap blit.
+        // Tracked so we only Refresh ScottPlot's static layer when YMax
+        // actually changes (axis labels follow). At high event rate most
+        // frames share the same NiceMax → no Refresh, just a bitmap blit.
         private double _lastYMax;
 
-        public HistogramPlotItem()
-        {
-            InitializeComponent();
-            Loaded += OnLoaded;
-        }
+        public HistogramPlotItem() => InitializeComponent();
+
+        protected override WpfPlot Plot => histogramPlot;
 
         private HistogramSettings Hist => (HistogramSettings)DataContext;
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
-        {
-            Settings.PropertyChanged += (_, _) => ApplySettings();
-            ApplySettings();
-
-            histogramPlot.Plot.RenderManager.RenderFinished += OnRenderFinished;
-            histogramPlot.Refresh();
-            BroadcastDataArea();
-        }
-
-        private void OnRenderFinished(object? sender, ScottPlot.RenderDetails e)
-            => histogramPlot.Dispatcher.Invoke(BroadcastDataArea);
-
-        private void BroadcastDataArea()
-        {
-            var px = histogramPlot.Plot.RenderManager.LastRender.DataRect;
-            var dpi = VisualTreeHelper.GetDpi(histogramPlot);
-            var rect = new Rect(
-                px.Left   / dpi.DpiScaleX,
-                px.Top    / dpi.DpiScaleY,
-                px.Width  / dpi.DpiScaleX,
-                px.Height / dpi.DpiScaleY);
-            RaiseDataAreaChanged(rect);
-        }
-
-        // X axis runs in bin-position space (0..BinCount); the AxisTicks helper
+        // X axis runs in bin-position space (0..BinCount); the AxisItem helper
         // places labels at data-equivalent positions for the chosen scale.
         // Y axis is always linear count, with SI-prefix labels (k, M, G).
-        private void ApplySettings()
+        protected override void ApplySettings()
         {
             histogramPlot.Plot.Clear();
 
@@ -76,9 +49,6 @@ namespace Telemetry.Viewer.Views.Plots
             histogramPlot.Refresh();
         }
 
-        // UI-thread per-frame work: only Refresh ScottPlot when YMax changes
-        // (axis labels follow). Otherwise no UI-thread work — the bitmap blit
-        // happens in the base class via DynamicBitmap.PresentBitmap.
         protected override void OnRender(ProcessedData data)
         {
             if (data is not HistogramFrame frame) return;
