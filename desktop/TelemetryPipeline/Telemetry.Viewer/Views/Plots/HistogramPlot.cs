@@ -19,7 +19,7 @@ internal static class HistogramPlot
         worksheet.RegisterPlotType<HistogramSettings, HistogramPlotItem>(
             type:           PlotType.Histogram,
             label:          "Histogram",
-            defaultSize:    new Size(360, 240),
+            defaultSize:    new Size(220, 160),
             createSettings: () => new HistogramSettings(
                 plotId:    Guid.NewGuid(),
                 channelId: 0,

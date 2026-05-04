@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Move-Item \"c:\\\\Users\\\\ishei\\\\source\\\\repos\\\\stm32-telemetry-system\\\\desktop\\\\TelemetryPipeline\\\\Telemetry.Viewer\\\\Models\\\\Plots\\\\HistogramBinCount.cs\" \"c:\\\\Users\\\\ishei\\\\source\\\\repos\\\\stm32-telemetry-system\\\\desktop\\\\TelemetryPipeline\\\\Telemetry.Viewer\\\\Models\\\\Plots\\\\BinCount.cs\")"
+      "PowerShell(Move-Item \"c:\\\\Users\\\\ishei\\\\source\\\\repos\\\\stm32-telemetry-system\\\\desktop\\\\TelemetryPipeline\\\\Telemetry.Viewer\\\\Models\\\\Plots\\\\HistogramBinCount.cs\" \"c:\\\\Users\\\\ishei\\\\source\\\\repos\\\\stm32-telemetry-system\\\\desktop\\\\TelemetryPipeline\\\\Telemetry.Viewer\\\\Models\\\\Plots\\\\BinCount.cs\")",
+      "PowerShell($base = \"c:\\\\Users\\\\ishei\\\\source\\\\repos\\\\stm32-telemetry-system\\\\desktop\\\\TelemetryPipeline\\\\Telemetry.Viewer\\\\Views\\\\Plots\\\\Axes\"; New-Item -ItemType Directory -Path \"$base\\\\AxisItems\",\"$base\\\\Generators\",\"$base\\\\Formatters\" -Force | Out-Null; Move-Item \"$base\\\\AxisItem.cs\" \"$base\\\\AxisItems\\\\AxisItem.cs\"; Move-Item \"$base\\\\LinearAxisItem.cs\" \"$base\\\\AxisItems\\\\LinearAxisItem.cs\"; Move-Item \"$base\\\\LogarithmicAxisItem.cs\" \"$base\\\\AxisItems\\\\LogarithmicAxisItem.cs\"; Move-Item \"$base\\\\FixedCountTickGenerator.cs\" \"$base\\\\Generators\\\\FixedCountTickGenerator.cs\"; Move-Item \"$base\\\\MajorMinorTickGenerator.cs\" \"$base\\\\Generators\\\\MajorMinorTickGenerator.cs\"; Move-Item \"$base\\\\AxisFormatters.cs\" \"$base\\\\Formatters\\\\AxisFormatters.cs\")",
+      "Bash(curl -fsSL \"https://raw.githubusercontent.com/isheikh8492/Worksheet/master/Views/Surfaces/DynamicBitmap.cs\")",
+      "PowerShell(Move-Item \"c:\\\\Users\\\\ishei\\\\source\\\\repos\\\\stm32-telemetry-system\\\\desktop\\\\TelemetryPipeline\\\\Telemetry.Viewer\\\\Views\\\\Plots\\\\DynamicSurface\\\\DynamicBitmapSurface.cs\" \"c:\\\\Users\\\\ishei\\\\source\\\\repos\\\\stm32-telemetry-system\\\\desktop\\\\TelemetryPipeline\\\\Telemetry.Viewer\\\\Views\\\\Plots\\\\DynamicSurface\\\\DynamicBitmap.cs\")"
     ]
   }
 }
