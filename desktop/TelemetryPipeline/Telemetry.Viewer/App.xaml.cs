@@ -1,7 +1,9 @@
+using System.IO;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Telemetry.IO;
+using Telemetry.Viewer.Services.Channels;
 using Telemetry.Viewer.Services.Dialogs;
 using Telemetry.Viewer.Services.Pipeline;
 using Telemetry.Viewer.ViewModels;
@@ -20,6 +22,14 @@ namespace Telemetry.Viewer
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            // Channel catalog — names + colors keyed by channel id, read by
+            // plot views (axis labels), processors (trace colors), and
+            // future pseudocolor / spectral-ribbon plots. Loads channels.json
+            // from the exe directory; if missing, seeds 60 ADC defaults and
+            // writes a starter file the user can edit.
+            var channelsPath = Path.Combine(AppContext.BaseDirectory, "channels.json");
+            ChannelCatalog.LoadFrom(channelsPath, fallbackCount: 60);
 
             _host = Host.CreateDefaultBuilder()
                 .ConfigureServices((_, services) =>

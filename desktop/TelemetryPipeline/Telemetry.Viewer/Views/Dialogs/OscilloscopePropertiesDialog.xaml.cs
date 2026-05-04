@@ -5,8 +5,6 @@ namespace Telemetry.Viewer.Views.Dialogs
 {
     public partial class OscilloscopePropertiesDialog : Window
     {
-        private const int MaxChannelCount = 60;
-
         private readonly OscilloscopeSettings _settings;
 
         public OscilloscopePropertiesDialog(OscilloscopeSettings settings)
@@ -14,13 +12,15 @@ namespace Telemetry.Viewer.Views.Dialogs
             InitializeComponent();
             _settings = settings;
 
-            ChannelIdComboBox.ItemsSource = Enumerable.Range(0, MaxChannelCount).ToArray();
-            ChannelIdComboBox.SelectedItem = settings.ChannelId;
+            ChannelIdComboBox.ItemsSource       = SelectionStrategy.AvailableChannels;
+            ChannelIdComboBox.DisplayMemberPath = SelectionStrategy.ChannelDisplayPath;
+            ChannelIdComboBox.SelectedValuePath = SelectionStrategy.ChannelValuePath;
+            ChannelIdComboBox.SelectedValue     = settings.ChannelId;
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
-            if (ChannelIdComboBox.SelectedItem is not int channelId)
+            if (ChannelIdComboBox.SelectedValue is not int channelId)
             {
                 MessageBox.Show(this, "Channel is required.", "Invalid input",
                     MessageBoxButton.OK, MessageBoxImage.Warning);

@@ -7,8 +7,6 @@ namespace Telemetry.Viewer.Views.Dialogs
 {
     public partial class HistogramPropertiesDialog : Window
     {
-        private const int MaxChannelCount = 60;
-
         private readonly HistogramSettings _settings;
 
         public HistogramPropertiesDialog(HistogramSettings settings)
@@ -16,10 +14,12 @@ namespace Telemetry.Viewer.Views.Dialogs
             InitializeComponent();
             _settings = settings;
 
-            ChannelIdComboBox.ItemsSource = Enumerable.Range(0, MaxChannelCount).ToArray();
-            ChannelIdComboBox.SelectedItem = settings.ChannelId;
+            ChannelIdComboBox.ItemsSource       = SelectionStrategy.AvailableChannels;
+            ChannelIdComboBox.DisplayMemberPath = SelectionStrategy.ChannelDisplayPath;
+            ChannelIdComboBox.SelectedValuePath = SelectionStrategy.ChannelValuePath;
+            ChannelIdComboBox.SelectedValue     = settings.ChannelId;
 
-            ParamComboBox.ItemsSource = Enum.GetValues<ParamType>();
+            ParamComboBox.ItemsSource = SelectionStrategy.AvailableParams;
             ParamComboBox.SelectedItem = settings.Param;
 
             BinCountComboBox.ItemsSource = Enum.GetValues<BinCount>();
@@ -33,7 +33,7 @@ namespace Telemetry.Viewer.Views.Dialogs
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
-            if (ChannelIdComboBox.SelectedItem is not int channelId) { Reject("Channel is required."); return; }
+            if (ChannelIdComboBox.SelectedValue is not int channelId) { Reject("Channel is required."); return; }
             if (ParamComboBox.SelectedItem is not ParamType param)  { Reject("Parameter is required."); return; }
             if (BinCountComboBox.SelectedItem is not BinCount binCount) { Reject("Bin count is required."); return; }
             if (!double.TryParse(MinRangeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var minRange))

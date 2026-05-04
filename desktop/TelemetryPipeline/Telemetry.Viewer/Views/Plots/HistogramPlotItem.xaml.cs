@@ -24,7 +24,7 @@ namespace Telemetry.Viewer.Views.Plots
         // Y axis is always linear count, with SI-prefix labels (K, M, B, T).
         protected override void OnApplySettings()
         {
-            histogramPlot.Plot.XLabel($"Ch {Hist.ChannelId} — {Hist.Param}");
+            histogramPlot.Plot.XLabel(Hist.Selection.Label);
             histogramPlot.Plot.YLabel("Count");
 
             var binCount = (int)Hist.BinCount;
