@@ -28,6 +28,8 @@ public sealed class Worksheet : ObservableObject
 
     public double SnapSize => 40;
 
+    public System.Windows.Input.ICommand PopulateDefaultLayoutCommand { get; }
+
     private ViewportSession? _session;
     // PlotItem instances reported by hosted PlotItemHosts — needed so we can
     // (re)bind them to a session as it comes and goes. Keyed by presenter id.
@@ -51,6 +53,11 @@ public sealed class Worksheet : ObservableObject
             }
             OnPropertyChanged();
         }
+    }
+
+    public Worksheet()
+    {
+        PopulateDefaultLayoutCommand = new RelayCommand(PopulateDefaultLayout);
     }
 
     // ---- Placement (click-to-drop) ----
@@ -117,6 +124,90 @@ public sealed class Worksheet : ObservableObject
     }
 
     public void Select(PlotPresenter presenter) => Selected = presenter;
+
+    // ---- Default layout ----
+
+    // Drops a "show everything" layout — clears whatever is on the worksheet
+    // first, then populates:
+    //   1. 4 spectral ribbons (full width, one per param)
+    //   2. 60 × 4 histograms (one per channel × param)
+    //   3. 16 pseudocolors (PeakHeight × Area, one per channel for ch0..ch15)
+    public void PopulateDefaultLayout()
+    {
+        Plots.Clear();
+        Selected = null;
+
+        var paramTypes = new[] { ParamType.Area, ParamType.PeakHeight, ParamType.PeakWidth, ParamType.Baseline };
+        var channelIds = SelectionStrategy.AllChannelIds();
+        var channelCount = channelIds.Count;
+
+        const double margin  = 12;
+        const double startX  = 40;
+        const double startY  = 40;
+        const double histW   = 160;
+        const double histH   = 120;
+        const double pcSize  = 240;
+
+        // 4 spectral ribbons stacked at the top, each at its registered
+        // default size — don't stretch to grid width.
+        var ribbonSize = Registry.DefaultSize(PlotType.SpectralRibbon);
+        var y = startY;
+        foreach (var p in paramTypes)
+        {
+            var s = new SpectralRibbonSettings(
+                plotId:     Guid.NewGuid(),
+                channelIds: channelIds,
+                param:      p,
+                binCount:   BinCount.Bins128,
+                minRange:   1, maxRange: 1_000_000,
+                scale:      AxisScale.Logarithmic);
+            Plots.Add(new PlotPresenter(s, x: startX, y: y, width: ribbonSize.Width, height: ribbonSize.Height, zIndex: _nextZIndex++));
+            y += ribbonSize.Height + margin;
+        }
+        y += margin;
+
+        // Histogram grid — 7 columns, channels flow left-to-right then wrap.
+        // Each param fills its own contiguous block of rows so the layout
+        // reads as 4 stacked param-sections of (channels in 7 cols × ~9 rows).
+        const int cols = 7;
+        var rowsPerParam = (channelCount + cols - 1) / cols;
+        for (int pi = 0; pi < paramTypes.Length; pi++)
+        {
+            for (int c = 0; c < channelCount; c++)
+            {
+                var s = new HistogramSettings(
+                    plotId:    Guid.NewGuid(),
+                    channelId: c,
+                    param:     paramTypes[pi],
+                    binCount:  BinCount.Bins64,
+                    minRange:  1, maxRange: 1_000_000,
+                    scale:     AxisScale.Logarithmic);
+                var col = c % cols;
+                var row = pi * rowsPerParam + c / cols;
+                var x = startX + col * (histW + margin);
+                Plots.Add(new PlotPresenter(s, x, y + row * (histH + margin), histW, histH, _nextZIndex++));
+            }
+        }
+        y += paramTypes.Length * rowsPerParam * (histH + margin) + margin;
+
+        // 16 pseudocolors — PeakHeight × Area per channel, ch0..ch15 in 4×4.
+        for (int i = 0; i < 16 && i < channelCount; i++)
+        {
+            var s = new PseudocolorSettings(
+                plotId:     Guid.NewGuid(),
+                xChannelId: i, xParam: ParamType.PeakHeight,
+                yChannelId: i, yParam: ParamType.Area,
+                binCount:   BinCount.Bins128,
+                xMinRange:  1, xMaxRange: 1_000_000,
+                yMinRange:  1, yMaxRange: 1_000_000,
+                xScale:     AxisScale.Logarithmic,
+                yScale:     AxisScale.Logarithmic);
+            int col = i % 4;
+            int row = i / 4;
+            var x = startX + col * (pcSize + margin);
+            Plots.Add(new PlotPresenter(s, x, y + row * (pcSize + margin), pcSize, pcSize, _nextZIndex++));
+        }
+    }
 
     // ---- Plot lifecycle ----
     // PlotItemHost calls these when it has created/torn down its inner

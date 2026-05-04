@@ -173,22 +173,29 @@
                     Background="{StaticResource WorksheetHeaderBrush}"
                     BorderBrush="#BBB"
                     BorderThickness="0,0,0,1">
-                    <ItemsControl ItemsSource="{Binding Worksheet.PlotTypes}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Button
-                                    MinWidth="140"
-                                    Margin="0,0,8,0"
-                                    Command="{Binding AddCommand}"
-                                    Content="{Binding Label, StringFormat='Add {0}'}" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <StackPanel Orientation="Horizontal">
+                        <ItemsControl ItemsSource="{Binding Worksheet.PlotTypes}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button
+                                        MinWidth="140"
+                                        Margin="0,0,8,0"
+                                        Command="{Binding AddCommand}"
+                                        Content="{Binding Label, StringFormat='Add {0}'}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button
+                            MinWidth="140"
+                            Margin="16,0,0,0"
+                            Command="{Binding Worksheet.PopulateDefaultLayoutCommand}"
+                            Content="Default Layout" />
+                    </StackPanel>
                 </Border>
 
                 <!--  Worksheet body — UserControl owns the canvas + grid + plot interactions  -->

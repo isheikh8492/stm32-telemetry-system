@@ -10,7 +10,7 @@
                       PreviewMouseLeftButtonDown="OnCanvasPreviewMouseLeftButtonDown">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <Canvas x:Name="WorksheetCanvas" Width="3000" Height="3000">
+                    <Canvas x:Name="WorksheetCanvas" Width="2000" Height="7000">
                         <Canvas.Background>
                             <DrawingBrush
                                 TileMode="Tile"
