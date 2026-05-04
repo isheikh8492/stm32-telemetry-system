@@ -44,6 +44,29 @@ public sealed class SelectionStrategy
     public static IReadOnlyList<ChannelDescriptor> AvailableChannels => ChannelCatalog.All;
     public static IReadOnlyList<ParamType> AvailableParams { get; } = Enum.GetValues<ParamType>();
 
+    // Resolve a raw channel id to its descriptor — single funnel used by
+    // multi-channel plots (Oscilloscope) that need name/color but don't
+    // carry a SelectionStrategy instance per channel.
+    public static ChannelDescriptor GetChannel(int id)
+        => id >= 0 && id < ChannelCatalog.Count ? ChannelCatalog.Get(id) : Fallback(id);
+
+    // Multi-select dialog helpers. Dialogs deal in object refs from
+    // ListBox.SelectedItems and don't need to know the underlying type;
+    // these convert between channel-id lists and the descriptor objects
+    // the ListBox is bound to.
+    public static IEnumerable<object> ChannelsForIds(IEnumerable<int> ids)
+        => ids.Where(id => id >= 0 && id < ChannelCatalog.Count)
+              .Select(id => (object)ChannelCatalog.Get(id));
+
+    public static IReadOnlyList<int> IdsFromSelectedItems(System.Collections.IList items)
+    {
+        var ids = new List<int>(items.Count);
+        foreach (var o in items)
+            if (o is ChannelDescriptor d) ids.Add(d.Id);
+        ids.Sort();
+        return ids;
+    }
+
     // ComboBox binding paths for AvailableChannels — keeps the descriptor's
     // member names out of dialog code so SelectionStrategy is the only place
     // that knows about ChannelDescriptor.

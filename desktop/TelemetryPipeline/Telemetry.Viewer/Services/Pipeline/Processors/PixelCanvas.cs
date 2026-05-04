@@ -1,3 +1,5 @@
+using System.Windows.Media;
+
 namespace Telemetry.Viewer.Services.Pipeline.Processors;
 
 // Pbgra32 pixel primitives. Buffer layout: width*height*4 bytes, B,G,R,A per pixel.
@@ -12,6 +14,10 @@ public static class PixelCanvas
 
     public static uint Pack(byte r, byte g, byte b, byte a)
         => (uint)((a << 24) | (r << 16) | (g << 8) | b);
+
+    // WPF Color → Pbgra32 uint. Used by processors that paint in a channel's
+    // color: SelectionStrategy.GetChannel(id).Color is a System.Windows.Media.Color.
+    public static uint Pack(Color c) => Pack(c.R, c.G, c.B, c.A);
 
     public static void Pixel(byte[] buffer, int width, int height, int x, int y, uint bgra)
     {

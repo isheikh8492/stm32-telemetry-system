@@ -64,12 +64,16 @@ public static class ChannelCatalog
 
     // ---- color helpers ----
 
-    // HSV hue 0° (red, id=0) → 270° (violet, id=count-1), full saturation/value.
-    // Stops at 270° — going to 360° wraps back to red.
-    private static Color SpectrumColor(int id, int count)
+    // Golden-angle hue distribution (≈137.508° per id step) — neighbouring
+    // ids land far apart in hue space, so two adjacent channels never look
+    // similar. Over many ids the hues spread evenly around the wheel without
+    // ever clustering. Saturation/Value pulled in slightly from full so the
+    // colours read as distinct ink-on-paper rather than blown-out neon.
+    private const double GoldenAngleDegrees = 137.5077640500378;
+    private static Color SpectrumColor(int id, int _)
     {
-        var hue = count <= 1 ? 0.0 : id * 270.0 / (count - 1);
-        return HsvToRgb(hue, 1.0, 1.0);
+        var hue = (id * GoldenAngleDegrees) % 360.0;
+        return HsvToRgb(hue, 0.78, 0.92);
     }
 
     private static Color HsvToRgb(double h, double s, double v)

@@ -20,7 +20,7 @@ internal static class OscilloscopePlot
             type:           PlotType.Oscilloscope,
             label:          "Oscilloscope",
             defaultSize:    new Size(280, 160),
-            createSettings: () => new OscilloscopeSettings(plotId: Guid.NewGuid(), channelId: 0),
+            createSettings: () => new OscilloscopeSettings(plotId: Guid.NewGuid(), channelIds: new[] { 0 }),
             createItem:     () => new OscilloscopePlotItem(),
             menuBuilder:    s => new[]
             {

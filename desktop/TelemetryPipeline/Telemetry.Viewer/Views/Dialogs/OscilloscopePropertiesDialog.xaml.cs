@@ -12,23 +12,27 @@ namespace Telemetry.Viewer.Views.Dialogs
             InitializeComponent();
             _settings = settings;
 
-            ChannelIdComboBox.ItemsSource       = SelectionStrategy.AvailableChannels;
-            ChannelIdComboBox.DisplayMemberPath = SelectionStrategy.ChannelDisplayPath;
-            ChannelIdComboBox.SelectedValuePath = SelectionStrategy.ChannelValuePath;
-            ChannelIdComboBox.SelectedValue     = settings.ChannelId;
+            // Display path is set in XAML (CheckBox.Content="{Binding Name}")
+            // because DisplayMemberPath is ignored when the ItemContainer
+            // template is overridden.
+            ChannelsListBox.ItemsSource = SelectionStrategy.AvailableChannels;
+
+            // Pre-select the channels currently in settings.
+            foreach (var ch in SelectionStrategy.ChannelsForIds(settings.ChannelIds))
+                ChannelsListBox.SelectedItems.Add(ch);
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
-            if (ChannelIdComboBox.SelectedValue is not int channelId)
+            var ids = SelectionStrategy.IdsFromSelectedItems(ChannelsListBox.SelectedItems);
+            if (ids.Count == 0)
             {
-                MessageBox.Show(this, "Channel is required.", "Invalid input",
+                MessageBox.Show(this, "Select at least one channel.", "Invalid input",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            // Mutates the live settings instance — bumps Version, fires
-            // PropertyChanged, and ProcessingEngine reprocesses next tick.
-            _settings.ChannelId = channelId;
+
+            _settings.ChannelIds = ids;
             DialogResult = true;
         }
 

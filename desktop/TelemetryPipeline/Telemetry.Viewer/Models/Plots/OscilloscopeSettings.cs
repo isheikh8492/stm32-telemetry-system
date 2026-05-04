@@ -1,24 +1,32 @@
 namespace Telemetry.Viewer.Models.Plots;
 
+// Oscilloscope: latest event's waveform per channel. Can show multiple
+// channels at once — each painted in its own ChannelDescriptor.Color.
 public sealed class OscilloscopeSettings : PlotSettings
 {
-    private int _channelId;
+    private IReadOnlyList<int> _channelIds;
 
-    public OscilloscopeSettings(Guid plotId, int channelId) : base(plotId)
+    public OscilloscopeSettings(Guid plotId, IReadOnlyList<int> channelIds) : base(plotId)
     {
-        _channelId = channelId;
+        _channelIds = channelIds;
     }
 
-    public int ChannelId
+    public IReadOnlyList<int> ChannelIds
     {
-        get => _channelId;
+        get => _channelIds;
         set
         {
-            if (SetProperty(ref _channelId, value))
+            if (SetProperty(ref _channelIds, value))
                 OnPropertyChanged(nameof(DisplayName));
         }
     }
 
     public override PlotType Type => PlotType.Oscilloscope;
-    public override string DisplayName => $"Oscilloscope (ch {_channelId})";
+    public override string DisplayName =>
+        _channelIds.Count switch
+        {
+            0 => "Oscilloscope",
+            1 => $"Oscilloscope (ch {_channelIds[0]})",
+            _ => $"Oscilloscope ({_channelIds.Count} ch)"
+        };
 }
