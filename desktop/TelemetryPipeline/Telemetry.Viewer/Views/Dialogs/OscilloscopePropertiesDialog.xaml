@@ -5,7 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="Oscilloscope Properties"
-    Width="320"
+    Width="360"
     Height="420"
     ResizeMode="NoResize"
     ShowInTaskbar="False"
@@ -13,21 +13,27 @@
     mc:Ignorable="d">
     <Grid Margin="16">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="12" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
         <TextBlock
             Grid.Row="0"
-            Margin="0,0,0,4"
+            Grid.Column="0"
+            VerticalAlignment="Top"
             Text="Channels:" />
 
         <!-- Multi-select via per-row CheckBox; SelectionMode=Multiple keeps
              the SelectedItems API the dialog code-behind uses. -->
         <ListBox
             x:Name="ChannelsListBox"
-            Grid.Row="1"
+            Grid.Row="0"
+            Grid.Column="2"
             SelectionMode="Multiple">
             <ListBox.ItemContainerStyle>
                 <Style TargetType="ListBoxItem">
@@ -50,8 +56,10 @@
         </ListBox>
 
         <StackPanel
-            Grid.Row="2"
-            Margin="0,12,0,0"
+            Grid.Row="1"
+            Grid.Column="0"
+            Grid.ColumnSpan="3"
+            Margin="0,16,0,0"
             HorizontalAlignment="Right"
             Orientation="Horizontal">
             <Button

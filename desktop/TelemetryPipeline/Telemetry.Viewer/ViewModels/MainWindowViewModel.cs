@@ -40,6 +40,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         // create <Type>Plot.cs, add one Register call here.
         OscilloscopePlot.Register(Worksheet, _dialogs);
         HistogramPlot.Register(Worksheet, _dialogs);
+        PseudocolorPlot.Register(Worksheet, _dialogs);
     }
 
     // Called once by MainWindow on Loaded. Keeps the ctor side-effect-free
