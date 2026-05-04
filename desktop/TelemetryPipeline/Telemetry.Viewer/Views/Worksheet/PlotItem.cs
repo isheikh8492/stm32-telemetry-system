@@ -65,6 +65,22 @@ public abstract class PlotItem : UserControl, IWorksheetItem, IRenderTarget
         ApplySettings();
     }
 
+    // Template method: clears the plot, applies the worksheet's standard
+    // chrome (transparent figure / white data background, hidden grid), then
+    // delegates to the subclass's OnApplySettings for axes/labels/limits.
+    // Refresh once at the end so subclasses don't each remember to call it.
+    private void ApplySettings()
+    {
+        Plot.Plot.Clear();
+        Plot.Background = Brushes.Transparent;
+        Plot.Plot.FigureBackground.Color = ScottPlot.Colors.Transparent;
+        Plot.Plot.DataBackground.Color   = ScottPlot.Colors.White;
+        Plot.Plot.Grid.IsVisible = false;
+
+        OnApplySettings();
+        Plot.Refresh();
+    }
+
     private void OnUnloadedBase(object sender, RoutedEventArgs e)
     {
         if (_renderFinishedHandler is not null)
@@ -91,7 +107,10 @@ public abstract class PlotItem : UserControl, IWorksheetItem, IRenderTarget
             px.Height / dpi.DpiScaleY));
     }
 
-    protected abstract void ApplySettings();
+    // Type-specific scaffolding — axes, tick generators, labels, ranges.
+    // Common chrome (Clear, backgrounds, grid) and the trailing Refresh()
+    // are handled by ApplySettings before/after this runs.
+    protected abstract void OnApplySettings();
 
     protected virtual void OnRender(ProcessedData data) { }
 

@@ -27,7 +27,7 @@ public sealed class LinearAxisItem : AxisItem
 
         var ticks = new List<Tick>();
         for (double v = NextMultiple(min, step); v <= max + step * 1e-9; v += step)
-            ticks.Add(new Tick(v, FormatSiPrefix(v), true));
+            ticks.Add(new Tick(v, AxisFormatters.NumericSiPrefix(v), true));
 
         for (double v = NextMultiple(min, minorStep); v <= max + minorStep * 1e-9; v += minorStep)
         {
@@ -69,13 +69,4 @@ public sealed class LinearAxisItem : AxisItem
 
     private static double NextMultiple(double from, double step)
         => Math.Ceiling(from / step) * step;
-
-    private static string FormatSiPrefix(double v)
-    {
-        var abs = Math.Abs(v);
-        if (abs >= 1e9) return $"{v / 1e9:0.##}G";
-        if (abs >= 1e6) return $"{v / 1e6:0.##}M";
-        if (abs >= 1e3) return $"{v / 1e3:0.##}k";
-        return v.ToString("0.##");
-    }
 }

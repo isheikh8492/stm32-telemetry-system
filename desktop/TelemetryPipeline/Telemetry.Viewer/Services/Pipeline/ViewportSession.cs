@@ -67,10 +67,10 @@ public sealed class ViewportSession : IDisposable
     }
 
     public IReadOnlyDictionary<Type, double> GetProcessingTimes() =>
-        _processing.GetAverageComputeTimes();
+        _processing.GetAverageTimes();
 
     public IReadOnlyDictionary<Type, double> GetRenderingTimes() =>
-        _rendering.GetAverageRenderTimes();
+        _rendering.GetAverageTimes();
 
     public void ResetMetrics()
     {

@@ -16,9 +16,6 @@ public sealed class RenderingEngine : PollingEngine
 
     private int _renderPassScheduled;
 
-    private readonly object _metricsLock = new();
-    private readonly Dictionary<Type, (double totalMs, long count)> _renderMetrics = new();
-
     public RenderingEngine(SynchronizationContext uiContext, DataStore store, TimeSpan interval)
         : base(interval)
     {
@@ -66,22 +63,6 @@ public sealed class RenderingEngine : PollingEngine
             ScheduleRenderPass();
     }
 
-    public IReadOnlyDictionary<Type, double> GetAverageRenderTimes()
-    {
-        lock (_metricsLock)
-        {
-            return _renderMetrics.ToDictionary(
-                kv => kv.Key,
-                kv => kv.Value.count > 0 ? kv.Value.totalMs / kv.Value.count : 0.0);
-        }
-    }
-
-    public void ResetMetrics()
-    {
-        lock (_metricsLock)
-            _renderMetrics.Clear();
-    }
-
     private void ScheduleRenderPass()
     {
         // Coalesce: at most one UI dispatch in flight at a time.
@@ -106,7 +87,7 @@ public sealed class RenderingEngine : PollingEngine
                 var startTicks = Stopwatch.GetTimestamp();
                 item.Entry.Target.Render(item.Data);
                 var elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
-                RecordRenderTime(item.Data.GetType(), elapsedMs);
+                RecordTime(item.Data.GetType(), elapsedMs);
 
                 item.Entry.LastRenderedData = item.Data;
             }
@@ -121,17 +102,6 @@ public sealed class RenderingEngine : PollingEngine
                 hasPending = _pendingRenders.Count > 0;
             if (hasPending)
                 ScheduleRenderPass();
-        }
-    }
-
-    private void RecordRenderTime(Type dataType, double elapsedMs)
-    {
-        lock (_metricsLock)
-        {
-            if (_renderMetrics.TryGetValue(dataType, out var existing))
-                _renderMetrics[dataType] = (existing.totalMs + elapsedMs, existing.count + 1);
-            else
-                _renderMetrics[dataType] = (elapsedMs, 1);
         }
     }
 

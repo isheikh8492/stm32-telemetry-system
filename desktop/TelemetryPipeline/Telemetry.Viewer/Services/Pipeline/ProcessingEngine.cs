@@ -15,9 +15,6 @@ public sealed class ProcessingEngine : PollingEngine
     // mutate, a new event arrives, or the plot's data-rect is resized.
     private readonly Dictionary<Guid, (uint settingsVersion, uint eventId, int pixelW, int pixelH)> _fingerprints = new();
 
-    private readonly object _metricsLock = new();
-    private readonly Dictionary<Type, (double totalMs, long count)> _computeMetrics = new();
-
     public ProcessingEngine(IDataSource source, DataStore store, TimeSpan interval)
         : base(interval)
     {
@@ -50,7 +47,7 @@ public sealed class ProcessingEngine : PollingEngine
             var startTicks = Stopwatch.GetTimestamp();
             var processed = processor.Process(settings, _source, pxW, pxH);
             var elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
-            RecordComputeTime(settings.GetType(), elapsedMs);
+            RecordTime(settings.GetType(), elapsedMs);
 
             if (processed is not null)
             {
@@ -67,30 +64,4 @@ public sealed class ProcessingEngine : PollingEngine
         }
     }
 
-    public IReadOnlyDictionary<Type, double> GetAverageComputeTimes()
-    {
-        lock (_metricsLock)
-        {
-            return _computeMetrics.ToDictionary(
-                kv => kv.Key,
-                kv => kv.Value.count > 0 ? kv.Value.totalMs / kv.Value.count : 0.0);
-        }
-    }
-
-    public void ResetMetrics()
-    {
-        lock (_metricsLock)
-            _computeMetrics.Clear();
-    }
-
-    private void RecordComputeTime(Type settingsType, double elapsedMs)
-    {
-        lock (_metricsLock)
-        {
-            if (_computeMetrics.TryGetValue(settingsType, out var existing))
-                _computeMetrics[settingsType] = (existing.totalMs + elapsedMs, existing.count + 1);
-            else
-                _computeMetrics[settingsType] = (elapsedMs, 1);
-        }
-    }
 }

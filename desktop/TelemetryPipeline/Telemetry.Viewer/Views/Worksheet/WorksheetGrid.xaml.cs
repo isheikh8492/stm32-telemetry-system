@@ -22,16 +22,16 @@ public partial class WorksheetGrid : UserControl
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (_worksheet is not null)
-            _worksheet.Placement.PropertyChanged -= OnPlacementChanged;
+            _worksheet.PropertyChanged -= OnWorksheetChanged;
         _worksheet = e.NewValue as Worksheet;
         if (_worksheet is not null)
-            _worksheet.Placement.PropertyChanged += OnPlacementChanged;
+            _worksheet.PropertyChanged += OnWorksheetChanged;
     }
 
-    private void OnPlacementChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void OnWorksheetChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(PlotPlacementController.IsArmed)) return;
-        Cursor = _worksheet?.Placement.IsArmed == true ? Cursors.Cross : null;
+        if (e.PropertyName != nameof(Worksheet.IsPlacing)) return;
+        Cursor = _worksheet?.IsPlacing == true ? Cursors.Cross : null;
     }
 
     // Empty-canvas click only — clicks on a PlotItemHost mark the event handled

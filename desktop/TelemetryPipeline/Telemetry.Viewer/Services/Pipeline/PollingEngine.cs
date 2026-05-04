@@ -6,6 +6,13 @@ public abstract class PollingEngine : IDisposable
     private Timer? _timer;
     private int _isTicking;
 
+    // Per-type running totals for instrumentation. Subclasses call RecordTime
+    // from inside Tick; consumers (stats VM, tests) read averages via
+    // GetAverageTimes. Same shape in ProcessingEngine and RenderingEngine,
+    // hence shared here.
+    private readonly object _metricsLock = new();
+    private readonly Dictionary<Type, (double totalMs, long count)> _metrics = new();
+
     protected PollingEngine(TimeSpan interval)
     {
         _interval = interval;
@@ -29,6 +36,33 @@ public abstract class PollingEngine : IDisposable
     public void Dispose() => Stop();
 
     protected abstract void Tick();
+
+    protected void RecordTime(Type type, double elapsedMs)
+    {
+        lock (_metricsLock)
+        {
+            if (_metrics.TryGetValue(type, out var existing))
+                _metrics[type] = (existing.totalMs + elapsedMs, existing.count + 1);
+            else
+                _metrics[type] = (elapsedMs, 1);
+        }
+    }
+
+    public IReadOnlyDictionary<Type, double> GetAverageTimes()
+    {
+        lock (_metricsLock)
+        {
+            return _metrics.ToDictionary(
+                kv => kv.Key,
+                kv => kv.Value.count > 0 ? kv.Value.totalMs / kv.Value.count : 0.0);
+        }
+    }
+
+    public void ResetMetrics()
+    {
+        lock (_metricsLock)
+            _metrics.Clear();
+    }
 
     private void SafeTick()
     {
