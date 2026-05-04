@@ -7,6 +7,10 @@ public sealed class DataStore
     private readonly object _lock = new();
     private readonly Dictionary<Guid, PlotSettings> _settings = new();
     private readonly Dictionary<Guid, ProcessedData> _processed = new();
+    // Per-plot pixel-buffer target size. Updated from the worksheet whenever
+    // a plot's data rect changes; read by PlotProcessor when allocating the
+    // painted byte[]. Bumps the settings.Version so the processor refingerprints.
+    private readonly Dictionary<Guid, (int W, int H)> _pixelSizes = new();
 
     public void UpsertSettings(PlotSettings settings)
     {
@@ -20,7 +24,20 @@ public sealed class DataStore
         {
             _settings.Remove(plotId);
             _processed.Remove(plotId);
+            _pixelSizes.Remove(plotId);
         }
+    }
+
+    public void UpsertPixelSize(Guid plotId, int width, int height)
+    {
+        lock (_lock)
+            _pixelSizes[plotId] = (width, height);
+    }
+
+    public (int W, int H) GetPixelSize(Guid plotId)
+    {
+        lock (_lock)
+            return _pixelSizes.TryGetValue(plotId, out var s) ? s : (0, 0);
     }
 
     public IReadOnlyList<PlotSettings> GetAllSettings()

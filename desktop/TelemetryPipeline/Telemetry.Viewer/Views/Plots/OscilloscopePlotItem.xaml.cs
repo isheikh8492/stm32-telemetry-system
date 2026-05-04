@@ -1,7 +1,5 @@
 using System.Windows;
 using System.Windows.Media;
-using ScottPlot.DataSources;
-using Telemetry.Viewer.Models;
 using Telemetry.Viewer.Models.Plots;
 using Telemetry.Viewer.Services.ContextMenu;
 using Telemetry.Viewer.Views.Plots.Axes;
@@ -11,8 +9,6 @@ namespace Telemetry.Viewer.Views.Plots
 {
     public partial class OscilloscopePlotItem : PlotItem
     {
-        private ScottPlot.Plottables.Signal? _eventSignal;
-
         public OscilloscopePlotItem()
         {
             InitializeComponent();
@@ -36,9 +32,7 @@ namespace Telemetry.Viewer.Views.Plots
         // RenderFinished can fire on a non-UI thread; marshal to UI dispatcher
         // and read LastRender there so the rect reflects the laid-out size.
         private void OnRenderFinished(object? sender, ScottPlot.RenderDetails e)
-        {
-            oscilloscopePlot.Dispatcher.Invoke(BroadcastDataArea);
-        }
+            => oscilloscopePlot.Dispatcher.Invoke(BroadcastDataArea);
 
         private void BroadcastDataArea()
         {
@@ -52,17 +46,16 @@ namespace Telemetry.Viewer.Views.Plots
             RaiseDataAreaChanged(rect);
         }
 
-        // Settings-driven scaffolding: axes, labels, ranges, title. Idempotent —
-        // called on Loaded and on every Settings.PropertyChanged. Plot.Clear
-        // wipes plottables so the next Render call recreates the data series.
+        // Settings-driven scaffolding: axes, labels, ranges. Idempotent —
+        // called on Loaded and on every Settings.PropertyChanged. The data
+        // bitmap is painted by OscilloscopePlotProcessor (off the UI thread).
         private void ApplySettings()
         {
             oscilloscopePlot.Plot.Clear();
-            _eventSignal = null;
 
-            // Outside the data rect (title / axis labels area) is transparent
-            // so the worksheet grid shows through; only the data area itself
-            // renders on a white surface.
+            // Outside the data rect (axis labels area) is transparent so the
+            // worksheet grid shows through; only the data area itself renders
+            // on a white surface, which the painted bitmap then overlays.
             oscilloscopePlot.Background = Brushes.Transparent;
             oscilloscopePlot.Plot.FigureBackground.Color = ScottPlot.Colors.Transparent;
             oscilloscopePlot.Plot.DataBackground.Color = ScottPlot.Colors.White;
@@ -71,41 +64,14 @@ namespace Telemetry.Viewer.Views.Plots
             oscilloscopePlot.Plot.Axes.Rules.Add(new ScottPlot.AxisRules.LockedVertical(oscilloscopePlot.Plot.Axes.Left, 0, 5000));
             oscilloscopePlot.Plot.Axes.Rules.Add(new ScottPlot.AxisRules.LockedHorizontal(oscilloscopePlot.Plot.Axes.Bottom, 0, 32));
 
-            // Hide gridlines inside the data area; the worksheet grid is the
-            // visual reference, the plot interior should stay clean.
             oscilloscopePlot.Plot.Grid.IsVisible = false;
 
-            // Tick generators owned by OscilloscopeTickGenerator — keeps the
-            // ADC range / step constants out of this view.
             oscilloscopePlot.Plot.Axes.Left.TickGenerator   = OscilloscopeTickGenerator.BuildY();
             oscilloscopePlot.Plot.Axes.Bottom.TickGenerator = OscilloscopeTickGenerator.BuildX();
 
             oscilloscopePlot.Plot.XLabel("Window (s)");
             oscilloscopePlot.Plot.YLabel("ADC");
             oscilloscopePlot.Plot.Axes.SetLimits(left: 0, right: 32, bottom: 0, top: 5000);
-            oscilloscopePlot.Refresh();
-        }
-
-        // RenderingEngine guarantees this runs on the UI thread.
-        public override void Render(ProcessedData data)
-        {
-            if (data is not OscilloscopeFrame frame)
-                return;
-
-            var samples = frame.Samples;
-            var values = new double[samples.Count];
-            for (int i = 0; i < samples.Count; i++)
-                values[i] = samples[i];
-
-            if (_eventSignal is null)
-            {
-                _eventSignal = oscilloscopePlot.Plot.Add.SignalConst(values);
-                _eventSignal.MaximumMarkerSize = 0;
-            }
-            else
-            {
-                _eventSignal.Data = new SignalConstSource<double>(values, 1);
-            }
             oscilloscopePlot.Refresh();
         }
 

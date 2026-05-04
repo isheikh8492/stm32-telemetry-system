@@ -1,17 +1,19 @@
 using System.Diagnostics;
-using Telemetry.Viewer.Models;
-using Telemetry.Viewer.Models.Plots;
 using Telemetry.Viewer.Services.DataSources;
-using Telemetry.Viewer.Views.Plots.Axes;
+using Telemetry.Viewer.Services.Pipeline.Processors;
 
 namespace Telemetry.Viewer.Services.Pipeline;
 
+// Thin orchestrator: per-plot fingerprint check, dispatch to the per-type
+// PlotProcessor, store the result. All per-type knowledge lives in the
+// processors; all painting happens off the UI thread inside Process().
 public sealed class ProcessingEngine : PollingEngine
 {
     private readonly IDataSource _source;
     private readonly DataStore _store;
-    // (settings.Version, eventId) — bumped whenever settings mutate or a new event arrives.
-    private readonly Dictionary<Guid, (uint settingsVersion, uint eventId)> _fingerprints = new();
+    // (settingsVersion, eventId, pixelW, pixelH) — refingerprint when settings
+    // mutate, a new event arrives, or the plot's data-rect is resized.
+    private readonly Dictionary<Guid, (uint settingsVersion, uint eventId, int pixelW, int pixelH)> _fingerprints = new();
 
     private readonly object _metricsLock = new();
     private readonly Dictionary<Type, (double totalMs, long count)> _computeMetrics = new();
@@ -26,8 +28,7 @@ public sealed class ProcessingEngine : PollingEngine
     protected override void Tick()
     {
         var id = _source.LatestEventId;
-        if (id is null)
-            return;
+        if (id is null) return;
 
         var allSettings = _store.GetAllSettings();
         var activeIds = new HashSet<Guid>(allSettings.Count);
@@ -36,13 +37,15 @@ public sealed class ProcessingEngine : PollingEngine
         {
             activeIds.Add(settings.PlotId);
 
-            var fingerprint = (settings.Version, id.Value);
+            var (pxW, pxH) = _store.GetPixelSize(settings.PlotId);
+            if (pxW <= 0 || pxH <= 0) continue;  // surface not yet sized
+
+            var fingerprint = (settings.Version, id.Value, pxW, pxH);
             if (_fingerprints.TryGetValue(settings.PlotId, out var prev) && prev == fingerprint)
                 continue;
 
-            // Stopwatch.GetTimestamp avoids the per-iteration Stopwatch allocation.
             var startTicks = Stopwatch.GetTimestamp();
-            var processed = ProcessFor(settings, _source);
+            var processed = PlotProcessor.Process(settings, _source, pxW, pxH);
             var elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
             RecordComputeTime(settings.GetType(), elapsedMs);
 
@@ -86,63 +89,5 @@ public sealed class ProcessingEngine : PollingEngine
             else
                 _computeMetrics[settingsType] = (elapsedMs, 1);
         }
-    }
-
-    // Each plot type chooses its own data-access pattern: PeekLatest (cheap)
-    // for "latest event only" plots, Snapshot (full copy) for plots that need history.
-    private static ProcessedData? ProcessFor(PlotSettings settings, IDataSource source)
-    {
-        return settings.Type switch
-        {
-            PlotType.Oscilloscope => ProcessOscilloscope(source, (OscilloscopeSettings)settings),
-            PlotType.Histogram    => ProcessHistogram(source,    (HistogramSettings)settings),
-            _                     => null
-        };
-    }
-
-    private static ProcessedData? ProcessOscilloscope(IDataSource source, OscilloscopeSettings settings)
-    {
-        var latest = source.PeekLatest();
-        if (latest is null)
-            return null;
-        if (settings.ChannelId < 0 || settings.ChannelId >= latest.Channels.Count)
-            return null;
-        var channel = latest.Channels[settings.ChannelId];
-        return new OscilloscopeFrame(latest.EventId, channel.Samples);
-    }
-
-    // V1: stateless trailing-window histogram. Each tick walks the ring-buffer
-    // snapshot and rebuilds bin counts. Acceptable while N×ticks/sec is small;
-    // when it isn't, swap to per-plot accumulator state keyed by settings.Version.
-    private static ProcessedData? ProcessHistogram(IDataSource source, HistogramSettings settings)
-    {
-        var snapshot = source.Snapshot();
-        if (snapshot.Count == 0) return null;
-
-        var strategy = AxisFactory.For(settings.Scale);
-        var binCount = (int)settings.BinCount;
-        var min = settings.MinRange;
-        var max = settings.MaxRange;
-        var selection = settings.Selection;
-
-        var counts = new long[binCount];
-        long total = 0;
-
-        foreach (var ev in snapshot)
-        {
-            if (!selection.TryExtract(ev, out var value)) continue;
-            var idx = strategy.GetBinIndex(value, min, max, binCount);
-            if (idx < 0) continue;
-            counts[idx]++;
-            total++;
-        }
-
-        var bins = new HistogramBin[binCount];
-        for (int i = 0; i < binCount; i++)
-        {
-            var (start, end) = strategy.GetBinRange(i, min, max, binCount);
-            bins[i] = new HistogramBin(start, end, counts[i]);
-        }
-        return new HistogramFrame(total, bins);
     }
 }

@@ -9,6 +9,7 @@ using Telemetry.Viewer.Models.Plots;
 using Telemetry.Viewer.Services.ContextMenu;
 using Telemetry.Viewer.Services.Pipeline;
 using Telemetry.Viewer.Views.Plots;
+using Telemetry.Viewer.Views.Plots.DynamicSurface;
 
 namespace Telemetry.Viewer.Views.Worksheet;
 
@@ -147,13 +148,18 @@ public sealed class Worksheet
         // Build the per-plot visual tree:
         //   outer (Canvas, positioned on worksheet)
         //     └─ host (Grid)
-        //          ├─ plot item (z=0)
-        //          └─ drag layer (transparent, z=1)
+        //          ├─ plot item    (z=0, axes/labels via ScottPlot)
+        //          ├─ dynamic surf (z=1, WriteableBitmap data layer)
+        //          └─ drag layer   (z=2, transparent pointer capture)
         var outer = new Canvas { Width = size.Width, Height = size.Height };
         var host  = new Grid   { Width = size.Width, Height = size.Height };
 
         host.Children.Add(item);
         Panel.SetZIndex(item, 0);
+
+        var dynamicSurface = new DynamicBitmap();
+        host.Children.Add(dynamicSurface);
+        Panel.SetZIndex(dynamicSurface, 1);
 
         var dragLayer = new Border
         {
@@ -161,13 +167,13 @@ public sealed class Worksheet
             Cursor = Cursors.SizeAll
         };
         host.Children.Add(dragLayer);
-        Panel.SetZIndex(dragLayer, 1);
+        Panel.SetZIndex(dragLayer, 2);
 
         outer.Children.Add(host);
         Canvas.SetLeft(outer, snappedX);
         Canvas.SetTop(outer,  snappedY);
 
-        var container = new PlotContainer(outer, host, dragLayer);
+        var container = new PlotContainer(outer, host, dragLayer, dynamicSurface);
         item.Container = container;
 
         item.AttachContextMenu(() => GetMenuFor(item.Settings));
@@ -182,9 +188,15 @@ public sealed class Worksheet
         _canvas.Children.Add(container.Outer);
         Select(item);
 
-        // Cache the latest data-area rect on the item so DragHandler can
-        // snap the data rect's TL to grid intersections.
-        item.DataAreaChanged += rect => item.DataArea = rect;
+        // Cache the latest data-area rect on the item (DragHandler reads it
+        // for snap math) and re-position/resize the dynamic bitmap surface so
+        // it overlays the WpfPlot's data rect exactly.
+        item.DataAreaChanged += rect =>
+        {
+            item.DataArea = rect;
+            dynamicSurface.Sync(rect);
+            _session?.UpdatePixelSize(settings.PlotId, dynamicSurface.TargetWidth, dynamicSurface.TargetHeight);
+        };
 
         // First-render alignment: data rect's TL → clicked intersection,
         // data rect's W/H → integer multiples of snap. Resizing the plot

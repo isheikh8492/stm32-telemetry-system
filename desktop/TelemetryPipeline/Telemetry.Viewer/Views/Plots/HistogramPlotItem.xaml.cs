@@ -10,6 +10,11 @@ namespace Telemetry.Viewer.Views.Plots
 {
     public partial class HistogramPlotItem : PlotItem
     {
+        // Tracked so we only Refresh ScottPlot's static layer when the Y range
+        // actually changes (axis labels follow). Most frames at high event
+        // rate share the same NiceMax → no Refresh, just a bitmap blit.
+        private double _lastYMax;
+
         public HistogramPlotItem()
         {
             InitializeComponent();
@@ -58,12 +63,6 @@ namespace Telemetry.Viewer.Views.Plots
             histogramPlot.Plot.XLabel(Hist.Param.ToString());
             histogramPlot.Plot.YLabel("Count");
 
-            // X is bin-position space → BuildBinTickGenerator (labels at
-            // data-equivalent positions per the chosen scale). Static.
-            // Y is dynamic (count grows with data) — install HistogramYAxisItem's
-            // 6-major tick generator ONCE; ScottPlot calls Regenerate when
-            // SetLimitsY moves the range, so labels (K / M / B) update while
-            // the tick layout stays fixed. Render() never touches ticks.
             var binCount = (int)Hist.BinCount;
             histogramPlot.Plot.Axes.Bottom.TickGenerator =
                 AxisFactory.For(Hist.Scale).BuildBinTickGenerator(Hist.MinRange, Hist.MaxRange, binCount);
@@ -71,46 +70,22 @@ namespace Telemetry.Viewer.Views.Plots
                 HistogramYAxisItem.CreateTickGenerator();
 
             histogramPlot.Plot.Axes.SetLimitsX(0, binCount);
-            // Initialize Y to NiceMax's floor (1K) so an empty histogram
-            // shows a meaningful axis instead of ScottPlot's default [-10, 10].
-            histogramPlot.Plot.Axes.SetLimitsY(0, HistogramYAxisItem.NiceMax(0));
+            // Empty histogram → NiceMax(0) floor (1K) so axis isn't [-10,10].
+            _lastYMax = HistogramYAxisItem.NiceMax(0);
+            histogramPlot.Plot.Axes.SetLimitsY(0, _lastYMax);
             histogramPlot.Refresh();
         }
 
-        // RenderingEngine guarantees this runs on the UI thread. Bars are drawn
-        // in bin-position space — bin i centered at (i + 0.5), width 1 — so
-        // log/linear scale appears purely via the X axis tick layout.
-        public override void Render(ProcessedData data)
+        // UI-thread per-frame work: only Refresh ScottPlot when YMax changes
+        // (axis labels follow). Otherwise no UI-thread work — the bitmap blit
+        // happens in the base class via DynamicBitmap.PresentBitmap.
+        protected override void OnRender(ProcessedData data)
         {
-            if (data is not HistogramFrame frame)
-                return;
+            if (data is not HistogramFrame frame) return;
+            if (frame.YMax == _lastYMax) return;
 
-            histogramPlot.Plot.Clear();
-
-            long maxCount = 0;
-            var bars = new ScottPlot.Bar[frame.Bins.Count];
-            for (int i = 0; i < frame.Bins.Count; i++)
-            {
-                var c = frame.Bins[i].Count;
-                if (c > maxCount) maxCount = c;
-                bars[i] = new ScottPlot.Bar
-                {
-                    Position    = i + 0.5,
-                    Value       = c,
-                    Size        = 1.0,
-                    FillColor   = ScottPlot.Colors.SteelBlue,
-                    LineWidth = 0,
-                    LineColor = ScottPlot.Colors.Transparent,
-                };
-            }
-            histogramPlot.Plot.Add.Bars(bars);
-
-            // X locked to bin-position space; Y anchored at 0, max rounded
-            // up to a "nice" value so every tick lands on a clean number.
-            // Tick generator was installed in ApplySettings — labels follow
-            // the new range through ScottPlot's Regenerate hook.
-            histogramPlot.Plot.Axes.SetLimitsX(0, (int)Hist.BinCount);
-            histogramPlot.Plot.Axes.SetLimitsY(0, HistogramYAxisItem.NiceMax(maxCount));
+            _lastYMax = frame.YMax;
+            histogramPlot.Plot.Axes.SetLimitsY(0, frame.YMax);
             histogramPlot.Refresh();
         }
 

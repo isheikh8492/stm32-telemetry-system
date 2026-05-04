@@ -48,6 +48,9 @@ public sealed class ViewportSession : IDisposable
         _rendering.Unregister(plotId);
     }
 
+    public void UpdatePixelSize(Guid plotId, int width, int height)
+        => _store.UpsertPixelSize(plotId, width, height);
+
     public IReadOnlyDictionary<Type, double> GetProcessingTimes() =>
         _processing.GetAverageComputeTimes();
 
