@@ -94,6 +94,7 @@ docs/                          Architecture docs + changelog
 - [docs/architecture/plot-types.md](docs/architecture/plot-types.md) — Oscilloscope, Histogram, Pseudocolor, Spectral Ribbon
 - [docs/architecture/worksheet-ui.md](docs/architecture/worksheet-ui.md) — placement, drag, resize, snap-to-grid, default layout
 - [docs/architecture/rendering.md](docs/architecture/rendering.md) — DynamicBitmap blit path, ScottPlot chrome, off-thread paint
+- [docs/architecture/zero-lag.md](docs/architecture/zero-lag.md) — exhaustive list of every gap closed across all 10 layers to achieve zero-lag rendering
 - [docs/BENCHMARKS.md](docs/BENCHMARKS.md) — measured A/B speedups (incremental vs naive recompute) + live-run template
 - [docs/CHANGELOG.md](docs/CHANGELOG.md) — feature history
 - [docs/DEV-DIARY.md](docs/DEV-DIARY.md) — chronological narrative of design decisions, bugs hit, and lessons learned (~34 entries)
