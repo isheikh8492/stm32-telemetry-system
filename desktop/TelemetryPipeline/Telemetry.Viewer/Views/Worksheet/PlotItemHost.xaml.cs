@@ -107,6 +107,15 @@ public partial class PlotItemHost : UserControl
         }
 
         var snap = _worksheet.SnapSize;
+        // Snap disabled — skip alignment entirely. The plot stays at the
+        // exact click point, sized to whatever defaults the registry gave it.
+        if (snap <= 0)
+        {
+            if (_alignmentListener is not null && _plotItem is not null)
+                _plotItem.DataAreaChanged -= _alignmentListener;
+            _alignmentListener = null;
+            return;
+        }
 
         _presenter.X = _alignTargetX - dataRect.X;
         _presenter.Y = _alignTargetY - dataRect.Y;

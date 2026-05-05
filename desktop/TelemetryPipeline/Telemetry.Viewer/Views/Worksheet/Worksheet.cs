@@ -26,7 +26,27 @@ public sealed class Worksheet : ObservableObject
     public ObservableCollection<PlotTypeOption> PlotTypes { get; } = new();
     public PlotTypeRegistry Registry { get; } = new();
 
-    public double SnapSize => 40;
+    private bool _isSnapEnabled;
+    public bool IsSnapEnabled
+    {
+        get => _isSnapEnabled;
+        set
+        {
+            if (SetProperty(ref _isSnapEnabled, value))
+                OnPropertyChanged(nameof(SnapSize));
+        }
+    }
+
+    private bool _isGridVisible;
+    public bool IsGridVisible
+    {
+        get => _isGridVisible;
+        set => SetProperty(ref _isGridVisible, value);
+    }
+
+    // 0 disables snap — DragHandler / ThumbManager / AlignToGrid all check
+    // `s > 0` and skip rounding when off, so the toggle "just works".
+    public double SnapSize => _isSnapEnabled ? 40 : 0;
 
     public System.Windows.Input.ICommand PopulateDefaultLayoutCommand { get; }
 

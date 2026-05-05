@@ -69,7 +69,14 @@
                     <StackPanel Style="{StaticResource SidebarSectionStyle}">
                         <TextBlock Style="{StaticResource SidebarHeaderTextStyle}" Text="Display Settings" />
                         <StackPanel Style="{StaticResource SidebarSectionBodyStyle}">
-                            <CheckBox Content="Show grid" Style="{StaticResource SidebarCheckBoxStyle}" />
+                            <CheckBox
+                                Content="Show grid"
+                                IsChecked="{Binding Worksheet.IsGridVisible}"
+                                Style="{StaticResource SidebarCheckBoxStyle}" />
+                            <CheckBox
+                                Content="Snap to grid"
+                                IsChecked="{Binding Worksheet.IsSnapEnabled}"
+                                Style="{StaticResource SidebarCheckBoxStyle}" />
                         </StackPanel>
                     </StackPanel>
 
