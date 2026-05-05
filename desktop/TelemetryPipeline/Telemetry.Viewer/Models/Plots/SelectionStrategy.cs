@@ -1,17 +1,13 @@
 using System.Windows.Media;
-using Telemetry.Core.Models;
 using Telemetry.Viewer.Services.Channels;
 
 namespace Telemetry.Viewer.Models.Plots;
 
-// Encapsulates "which event parameter to extract from which channel."
-// Hides Event/Channel/EventParameters traversal from settings and engines —
-// callers just provide an Event and read the resulting double via TryExtract.
-//
-// Also the single funnel for channel-related lookups everything else needs:
-//   * Plot views read Label / Color via the resolved Channel.
-//   * Dialog ComboBoxes populate from AvailableChannels / AvailableParams
-//     instead of touching ChannelCatalog directly.
+// Encapsulates "(channelId, param) selection" plus the channel-catalog
+// helpers everything else (plots, dialogs) reaches through. Live event
+// extraction used to live here too, but the per-feature ring buffer in
+// ChannelDataBuffer extracts at append time, so the runtime hot path no
+// longer needs SelectionStrategy.TryExtract.
 public sealed class SelectionStrategy
 {
     public int ChannelId { get; }
@@ -76,31 +72,6 @@ public sealed class SelectionStrategy
     // that knows about ChannelDescriptor.
     public static string ChannelDisplayPath { get; } = nameof(ChannelDescriptor.Name);
     public static string ChannelValuePath   { get; } = nameof(ChannelDescriptor.Id);
-
-    // ---- Extraction (worker-thread) ----
-
-    public bool TryExtract(Event ev, out double value)
-    {
-        value = 0;
-        if (ChannelId < 0 || ChannelId >= ev.Channels.Count) return false;
-        return TryExtractParam(ev.Channels[ChannelId].Parameters, Param, out value);
-    }
-
-    // Static parameter extraction — used by multi-channel processors that
-    // have many channel ids but one Param (Spectral Ribbon), so they don't
-    // construct a SelectionStrategy per channel just to call TryExtract.
-    public static bool TryExtractParam(EventParameters p, ParamType param, out double value)
-    {
-        value = param switch
-        {
-            ParamType.Area       => p.Area,
-            ParamType.PeakHeight => p.PeakHeight,
-            ParamType.PeakWidth  => p.PeakWidth,
-            ParamType.Baseline   => p.Baseline,
-            _                    => double.NaN,
-        };
-        return !double.IsNaN(value);
-    }
 
     // Out-of-range or empty-catalog fallback so callers never see a null.
     private static ChannelDescriptor Fallback(int id)

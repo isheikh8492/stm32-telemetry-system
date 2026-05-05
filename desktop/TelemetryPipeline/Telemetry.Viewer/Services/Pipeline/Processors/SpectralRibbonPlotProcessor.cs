@@ -38,7 +38,7 @@ public sealed class SpectralRibbonPlotProcessor : IPlotProcessor
         var snapshot = source.GetSnapshot(state.FeatureIndices, state.FeatureBuf);
 
         if (snapshot.IsEmpty)
-            return new SpectralRibbonFrame(0, 0, Array.Empty<byte>(), pixelWidth, pixelHeight) { IsEmpty = true };
+            return new SpectralRibbonFrame(Array.Empty<byte>(), pixelWidth, pixelHeight) { IsEmpty = true };
 
         if (state.LastSequence < snapshot.StartSequence)
             state.WipeIncrementalIndex();
@@ -100,7 +100,7 @@ public sealed class SpectralRibbonPlotProcessor : IPlotProcessor
             }
         }
 
-        return new SpectralRibbonFrame(state.RingCount, maxCount, buffer, pixelWidth, pixelHeight);
+        return new SpectralRibbonFrame(buffer, pixelWidth, pixelHeight);
     }
 
     public void ForgetState(Guid plotId) => _states.Remove(plotId);

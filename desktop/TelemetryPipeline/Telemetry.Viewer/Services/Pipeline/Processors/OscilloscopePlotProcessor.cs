@@ -42,6 +42,6 @@ public sealed class OscilloscopePlotProcessor : IPlotProcessor
 
         // EventId from latest; Samples isn't meaningful for multi-channel so
         // we drop it from the frame contract (was unused downstream anyway).
-        return new OscilloscopeFrame(latest.EventId, buffer, pixelWidth, pixelHeight);
+        return new OscilloscopeFrame(buffer, pixelWidth, pixelHeight);
     }
 }

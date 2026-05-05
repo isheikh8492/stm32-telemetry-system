@@ -4,7 +4,6 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using ScottPlot.WPF;
 using Telemetry.Viewer.Models;
-using Telemetry.Viewer.Models.Worksheet;
 using Telemetry.Viewer.Services.ContextMenu;
 using Telemetry.Viewer.Services.Pipeline;
 
@@ -20,7 +19,7 @@ namespace Telemetry.Viewer.Views.Worksheet;
 // Boilerplate every plot type would otherwise duplicate also lives here:
 // settings change → ApplySettings; ScottPlot RenderFinished → broadcast the
 // data rect (in DIPs) so PlotItemHost can size DynamicBitmap to it.
-public abstract class PlotItem : UserControl, IWorksheetItem, IRenderTarget
+public abstract class PlotItem : UserControl, IRenderTarget
 {
     public PlotSettings Settings => (PlotSettings)DataContext;
     public Guid Id => Settings.PlotId;

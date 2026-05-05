@@ -14,7 +14,7 @@ namespace Telemetry.Viewer.Views.Worksheet;
 // convert between data-rect edges and host edges without disturbing the
 // plot's chrome reflow during resize.
 //
-// Mutates Presenter.X/Y/Width/Height; ItemsControl + Canvas.Left/Top
+// Mutates ViewModel.X/Y/Width/Height; ItemsControl + Canvas.Left/Top
 // bindings translate that into the visual move.
 internal sealed class ThumbManager
 {
@@ -88,17 +88,17 @@ internal sealed class ThumbManager
     {
         thumb.DragStarted += (_, _) =>
         {
-            if (_host.Presenter is null) return;
-            _initialL = _host.Presenter.X;
-            _initialT = _host.Presenter.Y;
-            _initialR = _initialL + _host.Presenter.Width;
-            _initialB = _initialT + _host.Presenter.Height;
+            if (_host.ViewModel is null) return;
+            _initialL = _host.ViewModel.X;
+            _initialT = _host.ViewModel.Y;
+            _initialR = _initialL + _host.ViewModel.Width;
+            _initialB = _initialT + _host.ViewModel.Height;
 
             var area = _host.LastDataArea;
             _leftChrome   = area.X;
             _topChrome    = area.Y;
-            _rightChrome  = _host.Presenter.Width  - area.Right;
-            _bottomChrome = _host.Presenter.Height - area.Bottom;
+            _rightChrome  = _host.ViewModel.Width  - area.Right;
+            _bottomChrome = _host.ViewModel.Height - area.Bottom;
 
             if (FindCanvasAncestor(_host) is IInputElement canvas)
                 _dragStartCursor = Mouse.GetPosition(canvas);
@@ -109,7 +109,7 @@ internal sealed class ThumbManager
 
     private void OnDragDelta(Corner corner)
     {
-        if (_host.Presenter is null) return;
+        if (_host.ViewModel is null) return;
         if (FindCanvasAncestor(_host) is not IInputElement canvas) return;
 
         var cursor = Mouse.GetPosition(canvas);
@@ -158,10 +158,10 @@ internal sealed class ThumbManager
         var newH = b - t;
         if (newW < MinSize || newH < MinSize) return;
 
-        _host.Presenter.X = l;
-        _host.Presenter.Y = t;
-        _host.Presenter.Width = newW;
-        _host.Presenter.Height = newH;
+        _host.ViewModel.X = l;
+        _host.ViewModel.Y = t;
+        _host.ViewModel.Width = newW;
+        _host.ViewModel.Height = newH;
     }
 
     private void OnDataAreaChanged(Rect dataRect)

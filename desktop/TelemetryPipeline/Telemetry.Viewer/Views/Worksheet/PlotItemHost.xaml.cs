@@ -9,13 +9,13 @@ namespace Telemetry.Viewer.Views.Worksheet;
 // Composite per-plot view: hosts the type-specific PlotItem (axes/labels),
 // the data-bitmap layer, the transparent drag overlay, and the corner resize
 // thumbs. Created by ItemsControl from the worksheet's Plots collection;
-// DataContext is a PlotPresenter.
+// DataContext is a PlotViewModel.
 //
 // All per-plot wiring that used to live imperatively in Worksheet.AddPlotAt
 // lives here:
 //   * Resolves the right PlotItem via PlotTypeRegistry.CreateItem
-//   * DragHandler — drag-to-move (updates Presenter.X/Y, snapped to grid)
-//   * ThumbManager — corner resize (updates Presenter.W/H + X/Y, snapped)
+//   * DragHandler — drag-to-move (updates ViewModel.X/Y, snapped to grid)
+//   * ThumbManager — corner resize (updates ViewModel.W/H + X/Y, snapped)
 //   * AttachContextMenu via the inner PlotItem
 //   * Reports the PlotItem (as IRenderTarget) to the worksheet on Loaded so
 //     it can be added to the active session
@@ -24,10 +24,10 @@ public partial class PlotItemHost : UserControl
     private PlotItem? _plotItem;
     private ThumbManager? _thumbs;
     private Worksheet? _worksheet;
-    private PlotPresenter? _presenter;
+    private PlotViewModel? _viewModel;
     private Action<Rect>? _dataAreaListener;
     private Action<Rect>? _alignmentListener;
-    // Click target (presenter.X/Y on first Loaded). After the first render
+    // Click target (viewModel.X/Y on first Loaded). After the first render
     // we adjust the host so the DATA RECT's TL — not the host's TL — lands
     // on the clicked grid intersection. Plot reflows axis labels on resize,
     // so this iterates a few rounds; if chrome is stable, later passes are
@@ -47,21 +47,21 @@ public partial class PlotItemHost : UserControl
     }
 
     internal PlotItem? PlotItem => _plotItem;
-    internal PlotPresenter? Presenter => _presenter;
+    internal PlotViewModel? ViewModel => _viewModel;
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         if (_plotItem is not null) return;  // re-loaded; don't double-init
-        if (DataContext is not PlotPresenter presenter) return;
+        if (DataContext is not PlotViewModel viewModel) return;
 
-        _presenter = presenter;
+        _viewModel = viewModel;
         _worksheet = FindAncestorDataContext<Worksheet>();
         if (_worksheet is null) return;
 
-        _plotItem = _worksheet.Registry.CreateItem(presenter.Settings.Type);
+        _plotItem = _worksheet.Registry.CreateItem(viewModel.Settings.Type);
         if (_plotItem is null) return;
 
-        _plotItem.DataContext = presenter.Settings;
+        _plotItem.DataContext = viewModel.Settings;
         _plotItem.Host = this;
         PlotHost.Content = _plotItem;
 
@@ -74,20 +74,20 @@ public partial class PlotItemHost : UserControl
         };
         _plotItem.DataAreaChanged += _dataAreaListener;
 
-        _plotItem.AttachContextMenu(() => _worksheet.Registry.MenuFor(presenter.Settings));
+        _plotItem.AttachContextMenu(() => _worksheet.Registry.MenuFor(viewModel.Settings));
 
         DragHandler.Wire(this, _worksheet);
         _thumbs = ThumbManager.Wire(this, _worksheet);
-        _thumbs.SetVisible(presenter.IsSelected);
+        _thumbs.SetVisible(viewModel.IsSelected);
 
-        presenter.PropertyChanged += OnPresenterChanged;
+        viewModel.PropertyChanged += OnViewModelChanged;
 
-        _alignTargetX = presenter.X;
-        _alignTargetY = presenter.Y;
+        _alignTargetX = viewModel.X;
+        _alignTargetY = viewModel.Y;
         _alignmentListener = AlignToGrid;
         _plotItem.DataAreaChanged += _alignmentListener;
 
-        _worksheet.OnPlotItemReady(presenter, _plotItem);
+        _worksheet.OnPlotItemReady(viewModel, _plotItem);
     }
 
     // Run for the first ~6 DataAreaChanged events: adjust the host so the
@@ -97,7 +97,7 @@ public partial class PlotItemHost : UserControl
     // stabilizes (later passes are no-ops). Then unsubscribe.
     private void AlignToGrid(Rect dataRect)
     {
-        if (_presenter is null || _worksheet is null) return;
+        if (_viewModel is null || _worksheet is null) return;
         if (++_alignIters > 6)
         {
             if (_alignmentListener is not null && _plotItem is not null)
@@ -117,47 +117,47 @@ public partial class PlotItemHost : UserControl
             return;
         }
 
-        _presenter.X = _alignTargetX - dataRect.X;
-        _presenter.Y = _alignTargetY - dataRect.Y;
+        _viewModel.X = _alignTargetX - dataRect.X;
+        _viewModel.Y = _alignTargetY - dataRect.Y;
 
         var leftChrome   = dataRect.X;
         var topChrome    = dataRect.Y;
-        var rightChrome  = _presenter.Width  - dataRect.Right;
-        var bottomChrome = _presenter.Height - dataRect.Bottom;
+        var rightChrome  = _viewModel.Width  - dataRect.Right;
+        var bottomChrome = _viewModel.Height - dataRect.Bottom;
 
         var snappedDataW = Math.Max(snap, Math.Round(dataRect.Width  / snap) * snap);
         var snappedDataH = Math.Max(snap, Math.Round(dataRect.Height / snap) * snap);
 
-        _presenter.Width  = snappedDataW + leftChrome + rightChrome;
-        _presenter.Height = snappedDataH + topChrome  + bottomChrome;
+        _viewModel.Width  = snappedDataW + leftChrome + rightChrome;
+        _viewModel.Height = snappedDataH + topChrome  + bottomChrome;
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        if (_presenter is not null && _worksheet is not null)
-            _worksheet.OnPlotItemReleased(_presenter);
+        if (_viewModel is not null && _worksheet is not null)
+            _worksheet.OnPlotItemReleased(_viewModel);
 
         if (_plotItem is not null && _dataAreaListener is not null)
             _plotItem.DataAreaChanged -= _dataAreaListener;
         if (_plotItem is not null && _alignmentListener is not null)
             _plotItem.DataAreaChanged -= _alignmentListener;
 
-        if (_presenter is not null)
-            _presenter.PropertyChanged -= OnPresenterChanged;
+        if (_viewModel is not null)
+            _viewModel.PropertyChanged -= OnViewModelChanged;
 
         _plotItem = null;
         _thumbs = null;
-        _presenter = null;
+        _viewModel = null;
         _worksheet = null;
         _dataAreaListener = null;
         _alignmentListener = null;
         PlotHost.Content = null;
     }
 
-    private void OnPresenterChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void OnViewModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(PlotPresenter.IsSelected))
-            _thumbs?.SetVisible(_presenter?.IsSelected == true);
+        if (e.PropertyName == nameof(PlotViewModel.IsSelected))
+            _thumbs?.SetVisible(_viewModel?.IsSelected == true);
     }
 
     // Walks up the logical/visual ancestry until it finds an element whose

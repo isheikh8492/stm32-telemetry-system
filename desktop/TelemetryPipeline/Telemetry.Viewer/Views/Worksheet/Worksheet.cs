@@ -17,12 +17,12 @@ namespace Telemetry.Viewer.Views.Worksheet;
 //                      click drops; WorksheetGrid binds Cursor to this)
 //   * _session       — current pipeline session, if any
 //
-// Worksheet builds NO visual tree. Each PlotPresenter renders via
+// Worksheet builds NO visual tree. Each PlotViewModel renders via
 // WorksheetGrid's ItemTemplate (a PlotItemHost), which hosts the per-type
 // PlotItem and reports it back as an IRenderTarget via OnPlotItemReady.
 public sealed class Worksheet : ObservableObject
 {
-    public ObservableCollection<PlotPresenter> Plots { get; } = new();
+    public ObservableCollection<PlotViewModel> Plots { get; } = new();
     public ObservableCollection<PlotTypeOption> PlotTypes { get; } = new();
     public PlotTypeRegistry Registry { get; } = new();
 
@@ -52,13 +52,13 @@ public sealed class Worksheet : ObservableObject
 
     private ViewportSession? _session;
     // PlotItem instances reported by hosted PlotItemHosts — needed so we can
-    // (re)bind them to a session as it comes and goes. Keyed by presenter id.
+    // (re)bind them to a session as it comes and goes. Keyed by vm id.
     private readonly Dictionary<Guid, IRenderTarget> _renderTargets = new();
 
     private int _nextZIndex = 1;
 
-    private PlotPresenter? _selected;
-    public PlotPresenter? Selected
+    private PlotViewModel? _selected;
+    public PlotViewModel? Selected
     {
         get => _selected;
         private set
@@ -133,17 +133,17 @@ public sealed class Worksheet : ObservableObject
 
         var size = Registry.DefaultSize(settings.Type);
         var snap = SnapSize;
-        var presenter = new PlotPresenter(
+        var vm = new PlotViewModel(
             settings,
             x:      Snap(at.X, snap),
             y:      Snap(at.Y, snap),
             width:  size.Width,
             height: size.Height,
             zIndex: _nextZIndex++);
-        Plots.Add(presenter);
+        Plots.Add(vm);
     }
 
-    public void Select(PlotPresenter presenter) => Selected = presenter;
+    public void Select(PlotViewModel vm) => Selected = vm;
 
     // ---- Default layout ----
 
@@ -181,7 +181,7 @@ public sealed class Worksheet : ObservableObject
                 binCount:   BinCount.Bins128,
                 minRange:   1, maxRange: 1_000_000,
                 scale:      AxisScale.Logarithmic);
-            Plots.Add(new PlotPresenter(s, x: startX, y: y, width: ribbonSize.Width, height: ribbonSize.Height, zIndex: _nextZIndex++));
+            Plots.Add(new PlotViewModel(s, x: startX, y: y, width: ribbonSize.Width, height: ribbonSize.Height, zIndex: _nextZIndex++));
             y += ribbonSize.Height + margin;
         }
         y += margin;
@@ -205,7 +205,7 @@ public sealed class Worksheet : ObservableObject
                 var col = c % cols;
                 var row = pi * rowsPerParam + c / cols;
                 var x = startX + col * (histW + margin);
-                Plots.Add(new PlotPresenter(s, x, y + row * (histH + margin), histW, histH, _nextZIndex++));
+                Plots.Add(new PlotViewModel(s, x, y + row * (histH + margin), histW, histH, _nextZIndex++));
             }
         }
         y += paramTypes.Length * rowsPerParam * (histH + margin) + margin;
@@ -225,7 +225,7 @@ public sealed class Worksheet : ObservableObject
             int col = i % 4;
             int row = i / 4;
             var x = startX + col * (pcSize + margin);
-            Plots.Add(new PlotPresenter(s, x, y + row * (pcSize + margin), pcSize, pcSize, _nextZIndex++));
+            Plots.Add(new PlotViewModel(s, x, y + row * (pcSize + margin), pcSize, pcSize, _nextZIndex++));
         }
     }
 
@@ -233,24 +233,24 @@ public sealed class Worksheet : ObservableObject
     // PlotItemHost calls these when it has created/torn down its inner
     // PlotItem. Worksheet uses them to keep the session in sync.
 
-    public void OnPlotItemReady(PlotPresenter presenter, IRenderTarget target)
+    public void OnPlotItemReady(PlotViewModel vm, IRenderTarget target)
     {
-        _renderTargets[presenter.Id] = target;
+        _renderTargets[vm.Id] = target;
         _session?.AddPlot(target);
     }
 
-    public void OnPlotItemReleased(PlotPresenter presenter)
+    public void OnPlotItemReleased(PlotViewModel vm)
     {
-        if (_renderTargets.Remove(presenter.Id))
-            _session?.RemovePlot(presenter.Id);
+        if (_renderTargets.Remove(vm.Id))
+            _session?.RemovePlot(vm.Id);
     }
 
     public void RemovePlot(Guid plotId)
     {
-        var presenter = Plots.FirstOrDefault(p => p.Id == plotId);
-        if (presenter is null) return;
-        if (ReferenceEquals(_selected, presenter)) Selected = null;
-        Plots.Remove(presenter);
+        var vm = Plots.FirstOrDefault(p => p.Id == plotId);
+        if (vm is null) return;
+        if (ReferenceEquals(_selected, vm)) Selected = null;
+        Plots.Remove(vm);
         // PlotItemHost.Unloaded will fire OnPlotItemReleased for the session
         // teardown.
     }

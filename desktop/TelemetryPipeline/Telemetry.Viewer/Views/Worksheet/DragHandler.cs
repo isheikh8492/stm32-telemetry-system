@@ -9,7 +9,7 @@ internal static class DragHandler
     // Wires drag-to-move on the host's transparent DragLayer. Snaps the
     // DATA RECT's top-left to grid intersections (not the host's), matching
     // the placement-time alignment so the corner thumbs stay on the grid
-    // through every drag. Mutates Presenter.X/Y; ItemsControl + Canvas.Left
+    // through every drag. Mutates ViewModel.X/Y; ItemsControl + Canvas.Left
     // bindings translate that into the visual move.
     public static void Wire(PlotItemHost host, Worksheet worksheet)
     {
@@ -18,8 +18,8 @@ internal static class DragHandler
 
         host.DragLayerElement.MouseLeftButtonDown += (_, e) =>
         {
-            if (host.Presenter is null) return;
-            worksheet.Select(host.Presenter);
+            if (host.ViewModel is null) return;
+            worksheet.Select(host.ViewModel);
             dragOffset = e.GetPosition(host);
             host.DragLayerElement.CaptureMouse();
             dragging = true;
@@ -28,7 +28,7 @@ internal static class DragHandler
 
         host.DragLayerElement.MouseMove += (_, e) =>
         {
-            if (!dragging || host.Presenter is null) return;
+            if (!dragging || host.ViewModel is null) return;
             var canvas = FindCanvasAncestor(host);
             if (canvas is null) return;
 
@@ -44,8 +44,8 @@ internal static class DragHandler
             var l = Snap(rawL + area.X, snap) - area.X;
             var t = Snap(rawT + area.Y, snap) - area.Y;
 
-            host.Presenter.X = Math.Max(0, l);
-            host.Presenter.Y = Math.Max(0, t);
+            host.ViewModel.X = Math.Max(0, l);
+            host.ViewModel.Y = Math.Max(0, t);
         };
 
         host.DragLayerElement.MouseLeftButtonUp += (_, _) =>
@@ -57,8 +57,8 @@ internal static class DragHandler
 
         host.DragLayerElement.MouseRightButtonDown += (_, _) =>
         {
-            if (host.Presenter is not null)
-                worksheet.Select(host.Presenter);
+            if (host.ViewModel is not null)
+                worksheet.Select(host.ViewModel);
         };
     }
 

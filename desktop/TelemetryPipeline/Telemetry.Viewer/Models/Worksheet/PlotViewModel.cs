@@ -9,7 +9,7 @@ namespace Telemetry.Viewer.Models.Worksheet;
 // Bound to ContentPresenter via ItemsControl.ItemContainerStyle:
 // Canvas.Left/Top/Panel.ZIndex follow X/Y/ZIndex; PlotItemHost reads
 // Width/Height directly. IsSelected toggles the resize-thumb visibility.
-public sealed class PlotPresenter : ObservableObject, IWorksheetItem
+public sealed class PlotViewModel : ObservableObject
 {
     public PlotSettings Settings { get; }
 
@@ -17,7 +17,7 @@ public sealed class PlotPresenter : ObservableObject, IWorksheetItem
     private int _zIndex;
     private bool _isSelected;
 
-    public PlotPresenter(PlotSettings settings, double x, double y, double width, double height, int zIndex)
+    public PlotViewModel(PlotSettings settings, double x, double y, double width, double height, int zIndex)
     {
         Settings = settings;
         _x = x; _y = y; _width = width; _height = height; _zIndex = zIndex;

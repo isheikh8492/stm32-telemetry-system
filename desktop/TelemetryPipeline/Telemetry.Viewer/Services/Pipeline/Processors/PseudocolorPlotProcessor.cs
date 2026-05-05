@@ -37,7 +37,7 @@ public sealed class PseudocolorPlotProcessor : IPlotProcessor
         var snapshot = source.GetSnapshot(state.FeatureIndices, state.FeatureBuf);
 
         if (snapshot.IsEmpty)
-            return new PseudocolorFrame(0, 0, Array.Empty<byte>(), pixelWidth, pixelHeight) { IsEmpty = true };
+            return new PseudocolorFrame(Array.Empty<byte>(), pixelWidth, pixelHeight) { IsEmpty = true };
 
         if (state.LastSequence < snapshot.StartSequence)
             state.WipeIncrementalIndex();
@@ -87,7 +87,7 @@ public sealed class PseudocolorPlotProcessor : IPlotProcessor
             }
         }
 
-        return new PseudocolorFrame(state.RingCount, maxCount, buffer, pixelWidth, pixelHeight);
+        return new PseudocolorFrame(buffer, pixelWidth, pixelHeight);
     }
 
     public void ForgetState(Guid plotId) => _states.Remove(plotId);

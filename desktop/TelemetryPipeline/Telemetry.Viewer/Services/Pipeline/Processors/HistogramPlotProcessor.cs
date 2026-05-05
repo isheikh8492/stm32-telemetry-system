@@ -45,7 +45,7 @@ public sealed class HistogramPlotProcessor : IPlotProcessor
         // the bitmap rather than show a transparent buffer.
         if (snapshot.IsEmpty)
         {
-            return new HistogramFrame(0, 0, HistogramYAxisItem.NiceMax(0),
+            return new HistogramFrame(HistogramYAxisItem.NiceMax(0),
                 Array.Empty<byte>(), pixelWidth, pixelHeight) { IsEmpty = true };
         }
 
@@ -75,7 +75,6 @@ public sealed class HistogramPlotProcessor : IPlotProcessor
 
         // Paint into a fresh buffer.
         var buffer = new byte[pixelWidth * pixelHeight * 4];
-        long total = state.RingCount;
         if (binCount > 0 && yMax > 0 && pixelWidth > 0 && pixelHeight > 0)
         {
             for (int i = 0; i < binCount; i++)
@@ -91,7 +90,7 @@ public sealed class HistogramPlotProcessor : IPlotProcessor
             }
         }
 
-        return new HistogramFrame(total, maxCount, yMax, buffer, pixelWidth, pixelHeight);
+        return new HistogramFrame(yMax, buffer, pixelWidth, pixelHeight);
     }
 
     public void ForgetState(Guid plotId) => _states.Remove(plotId);
