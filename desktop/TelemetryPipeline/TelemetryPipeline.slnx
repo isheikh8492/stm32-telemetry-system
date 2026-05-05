@@ -4,4 +4,5 @@
   <Project Path="Telemetry.Engine/Telemetry.Engine.csproj" />
   <Project Path="Telemetry.IO/Telemetry.IO.csproj" />
   <Project Path="Telemetry.Viewer/Telemetry.Viewer.csproj" />
+  <Project Path="Telemetry.Tests/Telemetry.Tests.csproj" />
 </Solution>
