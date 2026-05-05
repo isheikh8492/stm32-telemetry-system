@@ -98,4 +98,14 @@ public sealed class ProcessingEngine : PollingEngine
         }
     }
 
+    // Drop every per-plot fingerprint and processor cache so the next event
+    // forces a fresh compute for every plot. Called when the user clears the
+    // in-memory buffer.
+    public void ClearState()
+    {
+        _fingerprints.Clear();
+        _nextProcessAt.Clear();
+        foreach (var p in PlotProcessorRegistry.All)
+            p.ForgetAll();
+    }
 }

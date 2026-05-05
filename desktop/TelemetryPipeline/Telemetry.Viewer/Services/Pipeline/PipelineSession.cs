@@ -59,6 +59,12 @@ public sealed class PipelineSession : IPipelineSession
         _producer.Stop();
     }
 
+    public void ClearMemory()
+    {
+        _buffer.Clear();
+        _viewport.ClearMemory();
+    }
+
     // SerialReader fires this on a worker thread; we marshal to the UI thread
     // so VM subscribers can update bindings or show dialogs without ceremony.
     private void OnReaderError(string message)

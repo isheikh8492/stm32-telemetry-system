@@ -178,7 +178,7 @@ public sealed class Worksheet : ObservableObject
                 plotId:     Guid.NewGuid(),
                 channelIds: channelIds,
                 param:      p,
-                binCount:   BinCount.Bins128,
+                binCount:   BinCount.Bins256,
                 minRange:   1, maxRange: 1_000_000,
                 scale:      AxisScale.Logarithmic);
             Plots.Add(new PlotViewModel(s, x: startX, y: y, width: ribbonSize.Width, height: ribbonSize.Height, zIndex: _nextZIndex++));
@@ -199,7 +199,7 @@ public sealed class Worksheet : ObservableObject
                     plotId:    Guid.NewGuid(),
                     channelId: c,
                     param:     paramTypes[pi],
-                    binCount:  BinCount.Bins64,
+                    binCount:  BinCount.Bins256,
                     minRange:  1, maxRange: 1_000_000,
                     scale:     AxisScale.Logarithmic);
                 var col = c % cols;
@@ -217,7 +217,7 @@ public sealed class Worksheet : ObservableObject
                 plotId:     Guid.NewGuid(),
                 xChannelId: i, xParam: ParamType.PeakHeight,
                 yChannelId: i, yParam: ParamType.Area,
-                binCount:   BinCount.Bins128,
+                binCount:   BinCount.Bins256,
                 xMinRange:  1, xMaxRange: 1_000_000,
                 yMinRange:  1, yMaxRange: 1_000_000,
                 xScale:     AxisScale.Logarithmic,

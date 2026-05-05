@@ -94,6 +94,7 @@ public sealed class HistogramPlotProcessor : IPlotProcessor
     }
 
     public void ForgetState(Guid plotId) => _states.Remove(plotId);
+    public void ForgetAll() => _states.Clear();
 
     // FIFO append-with-eviction. RingBins[(RingStart + RingCount) % cap]
     // gets the new bin; if full, head is evicted first. Bins outside the

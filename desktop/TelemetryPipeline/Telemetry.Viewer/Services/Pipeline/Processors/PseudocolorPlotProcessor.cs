@@ -91,6 +91,7 @@ public sealed class PseudocolorPlotProcessor : IPlotProcessor
     }
 
     public void ForgetState(Guid plotId) => _states.Remove(plotId);
+    public void ForgetAll() => _states.Clear();
 
     private static void AppendContribution(State state, int xb, int yb)
     {

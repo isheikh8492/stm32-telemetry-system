@@ -63,4 +63,10 @@ public sealed class DataStore
         lock (_lock)
             return _processed.TryGetValue(plotId, out var d) ? d : null;
     }
+
+    public void ClearProcessed()
+    {
+        lock (_lock)
+            _processed.Clear();
+    }
 }

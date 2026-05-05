@@ -139,6 +139,7 @@ public sealed class ChannelDataBuffer : IEventBuffer
                 Array.Clear(_featureRings[fi], 0, _capacity);
             _writeIndex = 0;
             _count = 0;
+            _totalAppended = 0;
             _latestEvent = null;
         }
     }

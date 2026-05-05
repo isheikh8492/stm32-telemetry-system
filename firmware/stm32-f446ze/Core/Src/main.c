@@ -255,12 +255,16 @@ static inline void apply_jitter_and_compute_params(uint8_t *frame_buf)
     uint16_t *dst = frame_samples + c * EVENT_SAMPLE_COUNT;
     uint16_t base = channel_baseline[c];
 
-    // Per-event amplitude scale: 0.92..1.08 (Q8 fixed point: 235..276)
-    uint32_t amp_q8 = 235 + (prng_next() % 42);
+    // Per-event amplitude scale: 0.25..2.0 (Q8 fixed point: 64..512).
+    // Wide enough that Area / PeakHeight span ~a decade on a log axis,
+    // so histograms read as proper bell curves instead of single-bin spikes.
+    uint32_t amp_q8 = 64 + (prng_next() % 449);
 
-    // Per-event baseline shift: ±32 ADC counts around channel baseline
-    int baseline_shift = ((int)(prng_next() & 0x3F)) - 32;
-    uint16_t event_baseline = clamp_adc((int)base + baseline_shift);
+    // Per-event baseline scale: multiplicative 0.25..2.0 (Q8: 64..512).
+    // Multiplicative jitter → values span ~a decade on a log axis instead
+    // of clustering in one bin around the channel's nominal baseline.
+    uint32_t base_q8 = 64 + (prng_next() % 449);
+    uint16_t event_baseline = clamp_adc(((int)base * (int)base_q8) >> 8);
 
     uint16_t peak_height = 0;
     uint32_t area = 0;
@@ -272,9 +276,9 @@ static inline void apply_jitter_and_compute_params(uint8_t *frame_buf)
       int signal_scaled = (signal_clean * (int)amp_q8) >> 8;  // amp jitter
       int s = (int)event_baseline + signal_scaled;
 
-      // Per-sample noise: ~±20 ADC counts
+      // Per-sample noise: ~±64 ADC counts
       int noise = ((int)(prng_next() & 0xFF)) - 128;
-      s += noise / 6;
+      s += noise / 2;
 
       if (s < ADC_MIN) s = ADC_MIN;
       if (s > ADC_MAX) s = ADC_MAX;
@@ -283,12 +287,17 @@ static inline void apply_jitter_and_compute_params(uint8_t *frame_buf)
       if (s > event_baseline) area += (uint32_t)(s - event_baseline);
     }
 
-    // Pass 2: peak_width = samples above half-height threshold
+    // Pass 2: peak_width = "area above half-height" = sum of (sample - threshold)
+    // for samples above the half-max threshold. Real instruments report this
+    // as FWHM × amplitude; mathematically it scales with both pulse width
+    // (in samples) AND pulse height, so values span 0..~30k and read as a
+    // proper distribution across multiple decades on a log axis.
     uint16_t threshold = event_baseline + (peak_height - event_baseline) / 2;
     uint32_t peak_width = 0;
     for (int i = 0; i < EVENT_SAMPLE_COUNT; i++)
     {
-      if (dst[i] >= threshold) peak_width++;
+      if (dst[i] >= threshold)
+        peak_width += (uint32_t)(dst[i] - threshold);
     }
 
     // Write fresh params with the event's actual baseline + recomputed values

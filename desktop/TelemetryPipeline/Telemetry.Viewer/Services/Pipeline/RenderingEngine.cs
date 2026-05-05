@@ -142,6 +142,27 @@ public sealed class RenderingEngine : PollingEngine
         }
     }
 
+    // Wipe every registered target's visual + drop pending/last-rendered state
+    // so the next ProcessedData (post-clear) renders fresh. Marshals the per-
+    // target Clear() onto the UI thread.
+    public void ClearAll()
+    {
+        RenderTargetEntry[] snapshot;
+        lock (_targetsLock)
+            snapshot = _targets.Values.ToArray();
+
+        lock (_pendingLock) _pendingRenders.Clear();
+        lock (_nextRenderLock) _nextRenderAt.Clear();
+        foreach (var entry in snapshot)
+            entry.LastRenderedData = null;
+
+        _dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
+        {
+            foreach (var entry in snapshot)
+                entry.Target.Clear();
+        }));
+    }
+
     private sealed class RenderTargetEntry
     {
         public Guid PlotId { get; }

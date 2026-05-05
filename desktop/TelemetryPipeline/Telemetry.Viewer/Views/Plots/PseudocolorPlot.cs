@@ -23,7 +23,7 @@ internal static class PseudocolorPlot
                 plotId:    Guid.NewGuid(),
                 xChannelId: 0, xParam: ParamType.PeakHeight,
                 yChannelId: 1, yParam: ParamType.PeakHeight,
-                binCount:  BinCount.Bins128,
+                binCount:  BinCount.Bins256,
                 xMinRange:  1, xMaxRange: 1_000_000,
                 yMinRange:  1, yMaxRange: 1_000_000,
                 xScale:     AxisScale.Logarithmic,

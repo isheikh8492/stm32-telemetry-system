@@ -21,4 +21,8 @@ public interface IPipelineSession : IDisposable
 
     void Start();
     void Stop();
+
+    // Wipe in-memory data: feature rings + every per-plot cache the pipeline
+    // is holding. Plots clear visually; the next event repopulates them.
+    void ClearMemory();
 }

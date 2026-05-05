@@ -104,6 +104,7 @@ public sealed class SpectralRibbonPlotProcessor : IPlotProcessor
     }
 
     public void ForgetState(Guid plotId) => _states.Remove(plotId);
+    public void ForgetAll() => _states.Clear();
 
     private sealed class State
     {

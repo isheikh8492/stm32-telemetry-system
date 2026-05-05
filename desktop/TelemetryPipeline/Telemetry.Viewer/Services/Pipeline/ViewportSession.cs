@@ -73,6 +73,17 @@ public sealed class ViewportSession : IDisposable
     public IReadOnlyDictionary<Models.Plots.PlotType, double> GetRenderingTimes() =>
         _rendering.GetAverageTimes();
 
+    // Wipe everything the pipeline is caching for the active plots — store
+    // outputs, processor incremental state, renderer pending/last-rendered,
+    // and the on-screen bitmaps. Called when the user clears the in-memory
+    // buffer; the next event triggers a fresh compute → render cycle.
+    public void ClearMemory()
+    {
+        _store.ClearProcessed();
+        _processing.ClearState();
+        _rendering.ClearAll();
+    }
+
     public void ResetMetrics()
     {
         _processing.ResetMetrics();

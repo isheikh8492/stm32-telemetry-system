@@ -50,6 +50,11 @@
                                     </Style>
                                 </Button.Style>
                             </Button>
+                            <Button
+                                Margin="0,6,0,0"
+                                Command="{Binding ClearMemoryCommand}"
+                                Content="Clear Memory"
+                                Style="{StaticResource SidebarButtonStyle}" />
                         </StackPanel>
                     </StackPanel>
 

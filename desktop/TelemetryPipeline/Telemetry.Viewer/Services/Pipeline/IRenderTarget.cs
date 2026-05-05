@@ -23,4 +23,9 @@ public interface IRenderTarget
     // Called on the UI thread by RenderingEngine with the latest processed
     // frame. Implementations blit data.Buffer onto their bitmap surface.
     void Render(ProcessedData data);
+
+    // Wipe whatever the target is currently displaying. Called on the UI
+    // thread when the user clears the in-memory buffer so plots stop showing
+    // stale frames.
+    void Clear() { }
 }

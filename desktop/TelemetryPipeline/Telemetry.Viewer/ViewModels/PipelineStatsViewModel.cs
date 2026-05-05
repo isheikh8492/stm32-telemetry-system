@@ -63,6 +63,21 @@ public sealed class PipelineStatsViewModel : ObservableObject, IDisposable
         _timer.Start();
     }
 
+    // Re-baseline the rate calc and zero the displayed counters. Called when
+    // the user clears the in-memory buffer; the buffer's TotalAppended has
+    // already been reset to 0 by the time we get here.
+    public void Reset()
+    {
+        _lastTotalAppended = 0;
+        _lastSampleTime = DateTime.UtcNow;
+        TotalEventsText = "0";
+        EventRateText = "0 ev/s";
+        if (_session is not null)
+            _session.Viewport.ResetMetrics();
+        foreach (var row in PlotStats)
+            row.Value = "—";
+    }
+
     public void Stop()
     {
         if (_timer is not null)

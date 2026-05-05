@@ -22,7 +22,7 @@ internal static class SpectralRibbonPlot
                 plotId:    Guid.NewGuid(),
                 channelIds: SelectionStrategy.AllChannelIds(),
                 param:     ParamType.PeakHeight,
-                binCount:  BinCount.Bins128,
+                binCount:  BinCount.Bins256,
                 minRange:  1,
                 maxRange:  1_000_000,
                 scale:     AxisScale.Logarithmic),

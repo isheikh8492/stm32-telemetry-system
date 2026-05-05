@@ -19,4 +19,9 @@ public interface IPlotProcessor
     // when a plot is removed from the worksheet so we don't leak memory.
     // Default no-op for stateless processors.
     void ForgetState(Guid plotId) { }
+
+    // Drop all per-plot incremental state. Called when the user clears the
+    // in-memory buffer so processors don't carry stale ring/bin caches into
+    // a fresh data run. Default no-op for stateless processors.
+    void ForgetAll() { }
 }

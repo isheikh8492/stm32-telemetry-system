@@ -124,6 +124,8 @@ public abstract class PlotItem : UserControl, IRenderTarget
             Host.DataLayerElement.PresentBitmap(data.Buffer, data.PixelWidth, data.PixelHeight);
     }
 
+    public void Clear() => Host?.DataLayerElement.Clear();
+
     // Plot exposes the ScottPlot control already; the host owns the drag
     // overlay that holds the right-click handler. Called by PlotItemHost
     // once it's in the visual tree and has built its tree.

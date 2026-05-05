@@ -15,6 +15,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IDialogService _dialogs;
 
     private readonly RelayCommand _toggleConnectionCommand;
+    private readonly RelayCommand _clearMemoryCommand;
 
     private IPipelineSession? _session;
 
@@ -32,6 +33,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
         _toggleConnectionCommand = new RelayCommand(ToggleConnection, CanToggleConnection);
         ToggleConnectionCommand = _toggleConnectionCommand;
+        _clearMemoryCommand = new RelayCommand(ClearMemory, () => _session is not null);
+        ClearMemoryCommand = _clearMemoryCommand;
         RefreshPortsCommand = new RelayCommand(LoadAvailablePorts);
 
         // Plot-type registry. Each per-plot wiring file (toolbar label,
@@ -96,6 +99,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             {
                 OnPropertyChanged(nameof(IsDisconnected));
                 _toggleConnectionCommand.RaiseCanExecuteChanged();
+                _clearMemoryCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -105,6 +109,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     // ---- Commands (public surface = ICommand; concrete kept private for RaiseCanExecuteChanged) ----
 
     public ICommand ToggleConnectionCommand { get; }
+    public ICommand ClearMemoryCommand { get; }
     public ICommand RefreshPortsCommand { get; }
 
     // ---- Internals ----
@@ -164,6 +169,12 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         IsConnected = false;
+    }
+
+    private void ClearMemory()
+    {
+        _session?.ClearMemory();
+        Stats.Reset();
     }
 
     // PipelineSession marshals serial reader errors onto the UI thread, so
