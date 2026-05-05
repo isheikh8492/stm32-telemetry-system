@@ -11,6 +11,7 @@ public static class PixelCanvas
 {
     // Pbgra32 colors (premultiplied, opaque).
     public static readonly uint SteelBlue = Pack(70, 130, 180, 255);
+    public static readonly uint Black     = Pack(0, 0, 0, 255);
 
     public static uint Pack(byte r, byte g, byte b, byte a)
         => (uint)((a << 24) | (r << 16) | (g << 8) | b);

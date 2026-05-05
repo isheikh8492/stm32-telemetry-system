@@ -168,10 +168,16 @@ public sealed class Worksheet : ObservableObject
         const double histH   = 120;
         const double pcSize  = 240;
 
-        // 4 spectral ribbons stacked at the top, each at its registered
-        // default size — don't stretch to grid width.
+        // 1 full-width oscilloscope at the very top showing all channels, so
+        // raw waveforms sit above the across-event analysis ribbons.
         var ribbonSize = Registry.DefaultSize(PlotType.SpectralRibbon);
+        var oscH = Registry.DefaultSize(PlotType.Oscilloscope).Height;
         var y = startY;
+        Plots.Add(new PlotViewModel(
+            new OscilloscopeSettings(plotId: Guid.NewGuid(), channelIds: new[] { 0 }),
+            x: startX, y: y, width: ribbonSize.Width, height: oscH, zIndex: _nextZIndex++));
+        y += oscH + margin;
+
         foreach (var p in paramTypes)
         {
             var s = new SpectralRibbonSettings(

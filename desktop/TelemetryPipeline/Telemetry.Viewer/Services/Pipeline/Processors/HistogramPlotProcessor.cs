@@ -86,7 +86,7 @@ public sealed class HistogramPlotProcessor : IPlotProcessor
                 int x1 = (int)((long)(i + 1) * pixelWidth / binCount);
                 int barH = (int)(c * (long)pixelHeight / yMax);
                 int y0 = pixelHeight - barH;
-                PixelCanvas.FillRect(buffer, pixelWidth, pixelHeight, x0, y0, x1 - x0, barH, PixelCanvas.SteelBlue);
+                PixelCanvas.FillRect(buffer, pixelWidth, pixelHeight, x0, y0, x1 - x0, barH, PixelCanvas.Black);
             }
         }
 
