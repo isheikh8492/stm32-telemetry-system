@@ -15,7 +15,7 @@ namespace Telemetry.Viewer.Views.Plots.Axes;
 public static class HistogramYAxisItem
 {
     private const int Divisions = 5;        // 6 majors = 5 intervals
-    private const double FloorYMax = 1_000;  // start at 1K; expand from there
+    private const double FloorYMax = 10;    // start at 10; expand from there
     private const double Padding = 1.1;     // 10% headroom above maxCount
 
     public static ITickGenerator CreateTickGenerator()

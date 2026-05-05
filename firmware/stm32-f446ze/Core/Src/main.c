@@ -300,6 +300,14 @@ static inline void apply_jitter_and_compute_params(uint8_t *frame_buf)
         peak_width += (uint32_t)(dst[i] - threshold);
     }
 
+    // Report peak HEIGHT ABOVE BASELINE (standard PHA convention) rather than
+    // the raw max sample. Raw samples are clamped to ADC_MAX (4095) which
+    // squashes the upper tail of the distribution; subtracting baseline lets
+    // the multiplicative amp jitter spread peak_height across decades.
+    peak_height = (peak_height > event_baseline)
+        ? (uint16_t)(peak_height - event_baseline)
+        : 0;
+
     // Write fresh params with the event's actual baseline + recomputed values
     uint8_t *p = frame_p + c * 12;
     memcpy(p + 0,  &event_baseline, 2);
