@@ -66,5 +66,14 @@ public sealed class DynamicBitmap : Image
         }
 
         _bitmap.WritePixels(new Int32Rect(0, 0, width, height), buffer, width * 4, 0);
+        if (Visibility != Visibility.Visible) Visibility = Visibility.Visible;
+    }
+
+    // Hide the bitmap layer entirely — used when the processor reports
+    // IsEmpty so the underlying plot's white DataBackground shows through
+    // instead of a stale (or partially zero) buffer flashing through.
+    public void Clear()
+    {
+        Visibility = Visibility.Collapsed;
     }
 }

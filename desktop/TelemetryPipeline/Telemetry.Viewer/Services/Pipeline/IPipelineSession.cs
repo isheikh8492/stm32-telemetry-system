@@ -1,4 +1,4 @@
-using Telemetry.Engine;
+using Telemetry.Viewer.Services.DataSources;
 
 namespace Telemetry.Viewer.Services.Pipeline;
 
@@ -11,7 +11,7 @@ namespace Telemetry.Viewer.Services.Pipeline;
 // lifetime is shorter than the application's.
 public interface IPipelineSession : IDisposable
 {
-    RingBuffer Buffer { get; }
+    ChannelDataBuffer Buffer { get; }
     ViewportSession Viewport { get; }
 
     // Raised on the UI thread (the captured SynchronizationContext) when the

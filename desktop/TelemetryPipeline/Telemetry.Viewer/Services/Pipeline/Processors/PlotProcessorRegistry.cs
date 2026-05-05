@@ -15,4 +15,6 @@ public static class PlotProcessorRegistry
 
     public static IPlotProcessor? For(PlotType type)
         => _processors.TryGetValue(type, out var p) ? p : null;
+
+    public static IEnumerable<IPlotProcessor> All => _processors.Values;
 }

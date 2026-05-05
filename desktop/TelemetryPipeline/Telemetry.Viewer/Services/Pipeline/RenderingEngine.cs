@@ -1,11 +1,13 @@
 using System.Diagnostics;
+using System.Windows.Threading;
 using Telemetry.Viewer.Models;
+using Telemetry.Viewer.Models.Plots;
 
 namespace Telemetry.Viewer.Services.Pipeline;
 
 public sealed class RenderingEngine : PollingEngine
 {
-    private readonly SynchronizationContext _uiContext;
+    private readonly Dispatcher _dispatcher;
     private readonly DataStore _store;
 
     private readonly Dictionary<Guid, RenderTargetEntry> _targets = new();
@@ -16,17 +18,36 @@ public sealed class RenderingEngine : PollingEngine
 
     private int _renderPassScheduled;
 
-    public RenderingEngine(SynchronizationContext uiContext, DataStore store, TimeSpan interval)
+    // Per-plot "earliest next render time". Slower plot types update at a
+    // slower visual rate; fast types (oscilloscope) get the engine's full rate.
+    private readonly Dictionary<Guid, long> _nextRenderAt = new();
+    private readonly object _nextRenderLock = new();
+
+    private static readonly Dictionary<PlotType, TimeSpan> RenderingIntervals = new()
+    {
+        [PlotType.Oscilloscope]    = TimeSpan.FromMilliseconds(33),
+        [PlotType.Histogram]       = TimeSpan.FromMilliseconds(250),
+        [PlotType.Pseudocolor]     = TimeSpan.FromMilliseconds(250),
+        [PlotType.SpectralRibbon]  = TimeSpan.FromMilliseconds(250),
+    };
+
+    public RenderingEngine(Dispatcher dispatcher, DataStore store, TimeSpan interval)
         : base(interval)
     {
-        _uiContext = uiContext;
+        _dispatcher = dispatcher;
         _store = store;
     }
 
     public void Register(Guid plotId, IRenderTarget target)
     {
+        // Cache the plot type at registration time. Register runs on the UI
+        // thread (called from PlotItemHost.OnLoaded → Worksheet.OnPlotItemReady
+        // → ViewportSession.AddPlot) where DataContext access is allowed.
+        // Reading target.Settings on the worker-thread Tick later would
+        // throw because DataContext is a DependencyProperty.
+        var type = target.Settings.Type;
         lock (_targetsLock)
-            _targets[plotId] = new RenderTargetEntry(plotId, target);
+            _targets[plotId] = new RenderTargetEntry(plotId, target, type);
     }
 
     public void Unregister(Guid plotId)
@@ -35,6 +56,8 @@ public sealed class RenderingEngine : PollingEngine
             _targets.Remove(plotId);
         lock (_pendingLock)
             _pendingRenders.Remove(plotId);
+        lock (_nextRenderLock)
+            _nextRenderAt.Remove(plotId);
     }
 
     protected override void Tick()
@@ -43,9 +66,18 @@ public sealed class RenderingEngine : PollingEngine
         lock (_targetsLock)
             snapshot = _targets.Values.ToArray();
 
+        var nowTicks = Stopwatch.GetTimestamp();
+
         bool enqueued = false;
         foreach (var entry in snapshot)
         {
+            // Per-type rate gate: skip if not yet due.
+            lock (_nextRenderLock)
+            {
+                if (_nextRenderAt.TryGetValue(entry.PlotId, out var due) && nowTicks < due)
+                    continue;
+            }
+
             var data = _store.GetProcessed(entry.PlotId);
             if (data is null)
                 continue;
@@ -57,6 +89,11 @@ public sealed class RenderingEngine : PollingEngine
             lock (_pendingLock)
                 _pendingRenders[entry.PlotId] = new PendingRender(entry, data);
             enqueued = true;
+
+            var interval = RenderingIntervals.TryGetValue(entry.Type, out var ti)
+                ? ti : TimeSpan.FromMilliseconds(33);
+            lock (_nextRenderLock)
+                _nextRenderAt[entry.PlotId] = nowTicks + (long)(interval.TotalSeconds * Stopwatch.Frequency);
         }
 
         if (enqueued)
@@ -68,7 +105,7 @@ public sealed class RenderingEngine : PollingEngine
         // Coalesce: at most one UI dispatch in flight at a time.
         if (Interlocked.Exchange(ref _renderPassScheduled, 1) == 1)
             return;
-        _uiContext.Post(_ => RenderPendingOnUiThread(), null);
+        _dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(RenderPendingOnUiThread));
     }
 
     private void RenderPendingOnUiThread()
@@ -87,7 +124,7 @@ public sealed class RenderingEngine : PollingEngine
                 var startTicks = Stopwatch.GetTimestamp();
                 item.Entry.Target.Render(item.Data);
                 var elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
-                RecordTime(item.Entry.Target.Settings.Type, elapsedMs);
+                RecordTime(item.Entry.Type, elapsedMs);
 
                 item.Entry.LastRenderedData = item.Data;
             }
@@ -109,12 +146,14 @@ public sealed class RenderingEngine : PollingEngine
     {
         public Guid PlotId { get; }
         public IRenderTarget Target { get; }
+        public PlotType Type { get; }
         public ProcessedData? LastRenderedData;   // mutated on UI thread only
 
-        public RenderTargetEntry(Guid plotId, IRenderTarget target)
+        public RenderTargetEntry(Guid plotId, IRenderTarget target, PlotType type)
         {
             PlotId = plotId;
             Target = target;
+            Type = type;
         }
     }
 

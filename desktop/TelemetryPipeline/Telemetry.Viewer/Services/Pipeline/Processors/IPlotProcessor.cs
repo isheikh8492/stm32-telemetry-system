@@ -14,4 +14,9 @@ namespace Telemetry.Viewer.Services.Pipeline.Processors;
 public interface IPlotProcessor
 {
     ProcessedData? Process(PlotSettings settings, IDataSource source, int pixelWidth, int pixelHeight);
+
+    // Drop any per-plot incremental state the processor is caching. Called
+    // when a plot is removed from the worksheet so we don't leak memory.
+    // Default no-op for stateless processors.
+    void ForgetState(Guid plotId) { }
 }

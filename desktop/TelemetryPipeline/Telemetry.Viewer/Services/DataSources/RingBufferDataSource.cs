@@ -1,22 +1,26 @@
 using Telemetry.Core.Models;
-using Telemetry.Engine;
 
 namespace Telemetry.Viewer.Services.DataSources;
 
-// Adapter exposing a Telemetry.Engine.RingBuffer through IDataSource.
-// The buffer itself doesn't know about IDataSource; this thin shim translates.
+// Adapter exposing a ChannelDataBuffer through IDataSource.
 public sealed class RingBufferDataSource : IDataSource
 {
-    private readonly RingBuffer _buffer;
+    private readonly ChannelDataBuffer _buffer;
 
-    public RingBufferDataSource(RingBuffer buffer)
+    public RingBufferDataSource(ChannelDataBuffer buffer)
     {
         _buffer = buffer;
     }
 
     public int Count => _buffer.Count;
+    public int Capacity => _buffer.Capacity;
     public long TotalAppended => _buffer.TotalAppended;
     public uint? LatestEventId => _buffer.LatestEventId;
     public Event? PeekLatest() => _buffer.PeekLatest();
-    public IReadOnlyList<Event> Snapshot() => _buffer.Snapshot();
+
+    public ChannelWindowSnapshot GetSnapshot(int featureIndex)
+        => _buffer.GetSnapshot(featureIndex);
+
+    public MultiChannelWindowSnapshot GetSnapshot(IReadOnlyList<int> featureIndices, double[][] outFeatures)
+        => _buffer.GetSnapshot(featureIndices, outFeatures);
 }

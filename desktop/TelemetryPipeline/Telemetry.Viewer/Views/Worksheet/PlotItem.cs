@@ -119,7 +119,10 @@ public abstract class PlotItem : UserControl, IWorksheetItem, IRenderTarget
     {
         if (Host is null) return;
         OnRender(data);
-        Host.DataLayerElement.PresentBitmap(data.Buffer, data.PixelWidth, data.PixelHeight);
+        if (data.IsEmpty)
+            Host.DataLayerElement.Clear();
+        else
+            Host.DataLayerElement.PresentBitmap(data.Buffer, data.PixelWidth, data.PixelHeight);
     }
 
     // Plot exposes the ScottPlot control already; the host owns the drag

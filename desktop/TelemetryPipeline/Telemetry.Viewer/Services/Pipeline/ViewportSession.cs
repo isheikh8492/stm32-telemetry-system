@@ -1,3 +1,4 @@
+using System.Windows.Threading;
 using Telemetry.Viewer.Services.DataSources;
 
 namespace Telemetry.Viewer.Services.Pipeline;
@@ -17,7 +18,7 @@ public sealed class ViewportSession : IDisposable
 
     public ViewportSession(
         IDataSource source,
-        SynchronizationContext uiContext,
+        Dispatcher dispatcher,
         TimeSpan? processingInterval = null,
         TimeSpan? renderingInterval = null)
     {
@@ -26,7 +27,7 @@ public sealed class ViewportSession : IDisposable
             processingInterval ?? DefaultProcessingInterval);
 
         _rendering = new RenderingEngine(
-            uiContext, _store,
+            dispatcher, _store,
             renderingInterval ?? DefaultRenderingInterval);
     }
 

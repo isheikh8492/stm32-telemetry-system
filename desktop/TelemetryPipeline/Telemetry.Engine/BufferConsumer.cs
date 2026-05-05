@@ -6,9 +6,9 @@ namespace Telemetry.Engine;
 public sealed class BufferConsumer : IConsumer
 {
     private readonly ChannelReader<Event> _reader;
-    private readonly RingBuffer _buffer;
+    private readonly IEventBuffer _buffer;
 
-    public BufferConsumer(ChannelReader<Event> reader, RingBuffer buffer)
+    public BufferConsumer(ChannelReader<Event> reader, IEventBuffer buffer)
     {
         _reader = reader;
         _buffer = buffer;

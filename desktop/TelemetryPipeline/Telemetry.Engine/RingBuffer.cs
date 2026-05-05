@@ -2,7 +2,7 @@ using Telemetry.Core.Models;
 
 namespace Telemetry.Engine;
 
-public sealed class RingBuffer
+public sealed class RingBuffer : IEventBuffer
 {
     private readonly Event[] _events;
     private readonly object _lock = new();

@@ -7,4 +7,10 @@ namespace Telemetry.Viewer.Models;
 // Two concrete-shape branches:
 //   EventFrame    — per-event visualization (Oscilloscope, scatter-of-one-event, ...)
 //   AnalysisFrame — across-events accumulation (Histogram, Pseudocolor, SpectralRibbon, ...)
-public abstract record ProcessedData(byte[] Buffer, int PixelWidth, int PixelHeight);
+public abstract record ProcessedData(byte[] Buffer, int PixelWidth, int PixelHeight)
+{
+    // True when the frame represents "no data to show" — PlotItem.Render
+    // hides the bitmap (Surface.Clear) instead of presenting an empty buffer.
+    // Set via object-initializer at construction: `new HistogramFrame(...) { IsEmpty = true }`.
+    public bool IsEmpty { get; init; }
+}

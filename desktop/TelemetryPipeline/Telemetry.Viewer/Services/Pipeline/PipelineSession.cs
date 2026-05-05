@@ -2,6 +2,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Telemetry.Engine;
 using Telemetry.IO;
+using Telemetry.Viewer.Services.DataSources;
 
 namespace Telemetry.Viewer.Services.Pipeline;
 
@@ -10,7 +11,7 @@ public sealed class PipelineSession : IPipelineSession
     private readonly SerialReader _reader;
     private readonly SerialProducer _producer;
     private readonly BufferConsumer _consumer;
-    private readonly RingBuffer _buffer;
+    private readonly ChannelDataBuffer _buffer;
     private readonly ViewportSession _viewport;
     private readonly SynchronizationContext _uiContext;
 
@@ -22,7 +23,7 @@ public sealed class PipelineSession : IPipelineSession
         SerialReader reader,
         SerialProducer producer,
         BufferConsumer consumer,
-        RingBuffer buffer,
+        ChannelDataBuffer buffer,
         ViewportSession viewport,
         SynchronizationContext uiContext)
     {
@@ -36,7 +37,7 @@ public sealed class PipelineSession : IPipelineSession
         _reader.ErrorOccurred += OnReaderError;
     }
 
-    public RingBuffer Buffer => _buffer;
+    public ChannelDataBuffer Buffer => _buffer;
     public ViewportSession Viewport => _viewport;
 
     public event Action<string>? ErrorOccurred;
